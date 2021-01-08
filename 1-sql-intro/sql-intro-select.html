@@ -1,0 +1,1399 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Einführung in SQL</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Prof. Dr. Jan Kirenz" />
+    <script src="libs/header-attrs/header-attrs.js"></script>
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/default-fonts.css" rel="stylesheet" />
+    <script src="libs/kePrint/kePrint.js"></script>
+    <link href="libs/lightable/lightable.css" rel="stylesheet" />
+    <link rel="stylesheet" href="footer-header.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, title-slide
+
+# Einführung in SQL
+## Selektieren / Ordnen / Filtern
+### Prof. Dr. Jan Kirenz
+### HdM Stuttgart
+
+---
+
+layout: true
+  
+&lt;div class="my-footer"&gt;&lt;span&gt; Einführung in SQL | Prof. Dr. Jan Kirenz &lt;/span&gt;&lt;/div&gt; 
+
+
+
+---
+class: middle
+
+background-image: url(https://www.practicalsqlbook.com/img/PracticalSQL_cover.jpg)
+background-position: 100% 5%
+
+
+### Dieses Tutorial   
+### basiert auf  
+###"A Beginner's 
+### Guide to 
+### Storytelling 
+### with Data"  
+### from Anthony 
+### DeBarros (2018)
+
+???
+DeBarros, A. (2018).  
+Practical SQL:  
+A Beginner's Guide  
+to Storytelling 
+with Data.    
+No Starch Press.
+---
+
+# Setup in R
+
+### Verbindung zur lokalen Datenbank herstellen
+
+* In R kann das Paket [`RPostgres`](https://db.rstudio.com/databases/postgresql/) genutzt werden
+* [RPostgres Übersicht](https://github.com/r-dbi/RPostgres)
+* [RPostgres Dokumentation](https://cran.r-project.org/web/packages/RPostgres/RPostgres.pdf)
+
+
+
+* Das Passwort `pw` muss zuvor als Objekt gespeichert werden:
+
+
+```r
+pw = "hier Passwort eingeben"
+```
+
+
+
+```r
+library(DBI)
+library(RPostgres)
+
+con &lt;- dbConnect(RPostgres::Postgres(),
+                 dbname = "postgres",
+                  host = "localhost", 
+                  port = 5432,
+                  user = "postgres", 
+                  password = pw)
+```
+
+???
+
+Clear the result:
+dbClearResult(res)
+
+Disconnect from the database:
+dbDisconnect(con)
+
+---
+
+## Tabelle erstellen
+
+* Tabelle erstellen mit `CREATE TABLE`. 
+
+* Wir erstellen zunächste eine Variable mit dem Namen `id` und versehen diese mit dem Datentyp `bigserial`. 
+
+
+```sql
+CREATE TABLE teachers (
+    id bigserial,
+    first_name varchar(25),
+    last_name varchar(50),
+    school varchar(50),
+    hire_date date,
+    salary numeric
+);
+```
+
+---
+
+# Daten in Tabelle einfügen. 
+
+* Bei Zahlenwerten sind keine Anführungszeichen erforderlich.
+
+
+```sql
+INSERT INTO teachers (first_name, last_name, school, hire_date, salary)
+VALUES ('Janet', 'Smith', 'F.D. Roosevelt HS', '2011-10-30', 36200), 
+       ('Lee', 'Reynolds', 'F.D. Roosevelt HS', '1993-05-22', 65000),
+       ('Samuel', 'Cole', 'Myers Middle School', '2005-08-01', 43500),
+       ('Samantha', 'Bush', 'Myers Middle School', '2011-10-30', 36200),
+       ('Betty', 'Diaz', 'Myers Middle School', '2005-08-30', 43500),
+       ('Kathleen', 'Roush', 'F.D. Roosevelt HS', '2010-10-22', 38500);
+```
+
+???
+
+Tabelle muss ausgefüllt werden
+
+---
+
+# Datenexploration mit SELECT
+
+* Tabelle anzeigen
+
+
+```sql
+SELECT * 
+FROM teachers;
+```
+
+--
+
+&lt;table class="table table-striped table-hover table-condensed table-responsive" style="margin-left: auto; margin-right: auto;"&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:right;"&gt; id &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; first_name &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; last_name &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; school &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; hire_date &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; salary &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Janet &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Smith &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; F.D. Roosevelt HS &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 2011-10-30 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 36200 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Lee &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Reynolds &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; F.D. Roosevelt HS &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 1993-05-22 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 65000 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 3 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Samuel &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Cole &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Myers Middle School &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 2005-08-01 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 43500 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 4 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Samantha &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Bush &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Myers Middle School &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 2011-10-30 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 36200 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 5 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Betty &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Diaz &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Myers Middle School &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 2005-08-30 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 43500 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 6 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Kathleen &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Roush &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; F.D. Roosevelt HS &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 2010-10-22 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 38500 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+
+---
+
+# Datenexploration mit SELECT
+
+* Abfrage an Datenbank stellen:
+
+
+```sql
+SELECT first_name
+FROM teachers;
+```
+
+--
+
+&lt;table class="table table-striped table-hover table-condensed table-responsive" style="margin-left: auto; margin-right: auto;"&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; first_name &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Janet &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Lee &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Samuel &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Samantha &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Betty &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Kathleen &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+---
+
+# Datenexploration mit SELECT
+
+
+```sql
+SELECT first_name, last_name, salary
+FROM teachers;
+```
+
+--
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; first_name &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; last_name &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; salary &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Janet &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Smith &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 36200 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Lee &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Reynolds &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 65000 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Samuel &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Cole &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 43500 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Samantha &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Bush &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 36200 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Betty &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Diaz &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 43500 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Kathleen &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Roush &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 38500 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+---
+
+# Datenexploration mit SELECT
+### DISTINCT
+
+* Auswahl von einzigartigen Fällen
+
+
+```sql
+SELECT DISTINCT school
+FROM teachers;
+```
+
+--
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; school &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Myers Middle School &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; F.D. Roosevelt HS &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+
+---
+
+# Datenexploration mit SELECT
+### DISTINCT
+
+
+
+```sql
+SELECT DISTINCT school, salary
+FROM teachers;
+```
+
+
+
+--
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; school &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; salary &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Myers Middle School &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 36200 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; F.D. Roosevelt HS &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 65000 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Myers Middle School &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 43500 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; F.D. Roosevelt HS &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 38500 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; F.D. Roosevelt HS &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 36200 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+???
+
+* Beispielhafte `DISTINCT` Abfragen:
+
+* Für alle "X" in dem Datensatz, was sind die zugehörigen "Y" werte. 
+
+ * Für jede Fabrik, was sind alle chemischen Produkte? 
+ * Zeige für jede Konzerthalle, welche Künstler diesen Monat auftreten. 
+
+---
+
+# Datenexploration mit SELECT
+### ORDER BY
+
+* Der Befehl verändert nicht die Original-Tabelle. 
+
+* `ORDER BY` sortiert automatisch aufsteigend (ASC für ascending). 
+
+* Falls eine absteigende Reihenfolge gewünscht wird, muss der Befehl `DESC` für descending hinzugefügt werden.
+
+---
+
+# Datenexploration mit SELECT
+### ORDER BY
+
+
+```sql
+SELECT first_name, last_name, salary
+FROM teachers
+ORDER BY salary DESC;
+```
+
+--
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; first_name &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; last_name &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; salary &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Lee &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Reynolds &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 65000 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Samuel &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Cole &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 43500 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Betty &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Diaz &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 43500 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Kathleen &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Roush &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 38500 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Janet &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Smith &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 36200 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Samantha &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Bush &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 36200 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+
+---
+
+# Datenexploration mit SELECT
+
+* Aufgabe: Erstellen Sie eine Tabelle mit den zuletzt eingestellten Lehrern pro Schule. Die Ergebnisse sollen nach Schule (aufsteigend) und Einstellungsdatum (absteigend) sortiert werden.
+
+--
+
+
+```sql
+SELECT last_name, school, hire_date
+FROM teachers
+ORDER BY school ASC, hire_date DESC;
+```
+
+--
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; last_name &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; school &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; hire_date &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Smith &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; F.D. Roosevelt HS &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 2011-10-30 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Roush &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; F.D. Roosevelt HS &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 2010-10-22 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Reynolds &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; F.D. Roosevelt HS &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 1993-05-22 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Bush &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Myers Middle School &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 2011-10-30 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Diaz &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Myers Middle School &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 2005-08-30 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Cole &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Myers Middle School &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 2005-08-01 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+---
+
+# Datenexploration mit SELECT
+### WHERE
+
+
+```sql
+SELECT last_name, school, hire_date
+FROM teachers
+WHERE school ='Myers Middle School'
+```
+
+--
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; last_name &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; school &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; hire_date &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Cole &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Myers Middle School &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 2005-08-01 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Bush &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Myers Middle School &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 2011-10-30 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Diaz &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Myers Middle School &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 2005-08-30 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+---
+class: center, middle
+
+
+|Zeichen  | Bedeutung   | Beispiel
+|---|---|---
+|=  |Equal to | `WHERE school = 'Myers Middle School'`
+|&lt;&gt; |or != Not equal to | `WHERE school &lt;&gt; 'Myers Middle School'`
+|&gt;  |Größer als | `WHERE salary &gt; 20000`
+|&lt;  |Kleiner als | `WHERE salary &lt; 20000`
+|&gt;= | Größer als oder gleich | `WHERE salary &gt;=20000`
+|&lt;= |Kleiner als | `WHERE salary &lt;= 60500`
+|BETWEEN | Zwischen |  `WHERE salary BETWEEN 20000 AND 40000`
+|IN  | Innerhalb | `WHERE last_name IN ('Bush', 'Roush')` 
+|LIKE | Wie (case sensitive)| `WHERE first_name LIKE 'Sam %'`
+|ILIKE | Wie (case insensitive)| `WHERE first_name ILIKE 'sam %'`
+|NOT | Negiert eine der oberen Bedingungen | `WHERE first_name NOT LIKE 'sam %'`
+
+???
+* Beispielsweise wollen wir herausfinden, wekche Lehrer vor einem bestimmten Jahr eingestellt worden sind und mehr als 75.000 Dollar verdienen.
+
+---
+
+# Datenexploration mit SELECT
+### WHERE
+
+* Aufgabe: In welcher Schule unterrichtet Janet? 
+
+--
+
+
+```sql
+SELECT first_name, school
+FROM teachers
+WHERE first_name = 'Janet';
+```
+
+--
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; first_name &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; school &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Janet &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; F.D. Roosevelt HS &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+---
+
+# Datenexploration mit SELECT
+### WHERE !=
+
+
+```sql
+SELECT school
+FROM teachers
+WHERE school != 'F.D. Rooselvelt HS';
+```
+
+--
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; school &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; F.D. Roosevelt HS &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; F.D. Roosevelt HS &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Myers Middle School &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Myers Middle School &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Myers Middle School &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; F.D. Roosevelt HS &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+---
+
+# Datenexploration mit SELECT
+### WHERE &lt;
+
+* Welche Lehrer_innen wurden vor dem 01 Januar 2001 eingestellt?
+
+--
+
+
+```sql
+SELECT first_name, last_name, hire_date
+FROM teachers
+WHERE hire_date &lt; '2000-01-01';
+```
+
+--
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; first_name &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; last_name &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; hire_date &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Lee &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Reynolds &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 1993-05-22 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+---
+
+# Datenexploration mit SELECT
+### WHERE &gt;=
+
+
+```sql
+SELECT first_name, last_name, salary
+FROM teachers
+WHERE salary &gt;= 43500;
+```
+
+--
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; first_name &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; last_name &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; salary &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Lee &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Reynolds &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 65000 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Samuel &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Cole &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 43500 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Betty &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Diaz &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 43500 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+
+---
+
+# Datenexploration mit SELECT
+### WHERE BETWEEN
+
+
+```sql
+SELECT first_name, last_name, school, salary
+FROM teachers
+WHERE salary BETWEEN 40000 AND 65000 
+```
+
+--
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; first_name &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; last_name &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; school &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; salary &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Lee &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Reynolds &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; F.D. Roosevelt HS &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 65000 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Samuel &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Cole &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Myers Middle School &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 43500 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Betty &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Diaz &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Myers Middle School &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 43500 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+---
+
+# Datenexploration mit SELECT
+
+### LIKE, ILIKE und WHERE
+
+* Prozentzeichen: (%) Platzhalter für ein oder mehrere Zeichen.
+* Unterstrich: (_) Platzhalter für genau *ein* Zeichen 
+
+* Beispiel für die Suche nach dem Namen Baker mit LIKE (case sensitive):
+
+ * LIKE 'b%'
+ * LIKE '%ak%'
+ * LIKE '_aker%'
+ * LIKE 'ba_er'
+
+---
+
+# Datenexploration mit SELECT
+
+### LIKE, ILIKE und WHERE
+
+
+* Aufgabe: Welche Vornamen beginnen mit "sam" (mit Berücksichtigung der Groß- und Kleinschreibung)?
+
+--
+
+
+```sql
+SELECT first_name
+FROM teachers
+WHERE first_name LIKE 'sam%' 
+```
+
+--
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; first_name &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+* Diese Abfrage führt zu keinem Resultat, da `LIKE` case sensitive ist. 
+
+---
+
+# Datenexploration mit SELECT
+### WHERE ILIKE
+
+* Aufgabe: Welche Vornamen beginnen mit "sam" (ohne Berücksichtigung der Groß- und Kleinschreibung)?
+
+--
+
+
+```sql
+SELECT first_name
+FROM teachers
+WHERE first_name ILIKE 'sam%' 
+```
+
+--
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; first_name &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Samuel &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Samantha &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+
+---
+
+# Datenexploration mit SELECT
+
+### LIKE &amp; ILIKE
+
+* Generell ist es empfehlenswert, **ILIKE** in Verbindung mit Platzhaltern zu nutzen, um nicht versehentlich Resultate aus der Suche auszuschließen. 
+
+* Dadurch werden auch Ergebnisse mit eingeschlossen, die versehentlich falsch in die Datenbank eingetragen worden sind.
+
+* Da LIKE und ILIKE nach Mustern in Daten suchen, kann die Suche relativ lange dauern. 
+
+???
+Die Performance der Suche kann durch das Verwenden von Indexes verbessert werden. siehe später...
+
+---
+
+# Datenexploration mit SELECT
+### WHERE, AND und OR
+
+* Es ist oft sinnvoll, Operatoren in einer Abfrage zu verbinden. 
+
+* Dies kann mit `AND` und `OR` umgesetzt werden.
+
+
+```sql
+SELECT *
+FROM teachers
+WHERE school = 'Myers Middle School'
+        AND salary &lt; 40000;
+```
+
+--
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:right;"&gt; id &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; first_name &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; last_name &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; school &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; hire_date &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; salary &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 4 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Samantha &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Bush &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Myers Middle School &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 2011-10-30 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 36200 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+---
+
+# Datenexploration mit SELECT
+### WHERE &amp; OR
+
+* Aufgabe: Auflistung aller Personen mit Nachnamen Cole oder Bush.
+
+--
+
+
+```sql
+SELECT *
+FROM teachers
+WHERE last_name = 'Cole'
+        OR last_name = 'Bush';
+```
+
+--
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:right;"&gt; id &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; first_name &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; last_name &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; school &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; hire_date &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; salary &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 3 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Samuel &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Cole &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Myers Middle School &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 2005-08-01 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 43500 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 4 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Samantha &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Bush &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Myers Middle School &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 2011-10-30 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 36200 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+---
+
+# Datenexploration mit SELECT
+### WHERE, AND und OR
+
+* Aufgabe: Welche Lehrer sind an der F.D. Roosevelt HS beschäftigt und haben entweder einen Verdienst unter 38.000 oder über 40.000? 
+
+--
+
+
+```sql
+SELECT *
+FROM teachers
+WHERE school = 'F.D. Roosevelt HS'
+        AND (salary &lt; 38000 OR salary &gt; 40000);
+```
+
+--
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:right;"&gt; id &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; first_name &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; last_name &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; school &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; hire_date &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; salary &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Janet &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Smith &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; F.D. Roosevelt HS &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 2011-10-30 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 36200 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Lee &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Reynolds &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; F.D. Roosevelt HS &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 1993-05-22 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 65000 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+---
+
+# Datenexploration mit SELECT
+## Kombinierte Abfragen
+
+Beispiel für das allgemeine Schema eine Abfrage: 
+
+```
+SELECT column_names
+FROM table_names
+WHERE criteria
+ORDER BY column_names
+```
+---
+
+
+
+```sql
+SELECT first_name, last_name, school, hire_date, salary
+FROM teachers
+WHERE school LIKE '%Roos%'
+ORDER BY hire_date DESC;
+```
+
+--
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; first_name &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; last_name &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; school &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; hire_date &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; salary &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Janet &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Smith &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; F.D. Roosevelt HS &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 2011-10-30 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 36200 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Kathleen &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Roush &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; F.D. Roosevelt HS &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 2010-10-22 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 38500 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Lee &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Reynolds &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; F.D. Roosevelt HS &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 1993-05-22 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 65000 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+
+---
+
+# Datenexploration mit SELECT
+## Übungen
+
+* Welche Lehrer_innen (Name und Vorname) sind an welchen Schulen angestellt? Das Ergebnis soll nach Schulen und Nachnamen geordnet werden (aufsteigend).
+
+
+* Welche Lehrer_innen, deren Vorname mit "S" beginnen, haben ein Einkommen größer als 40.000?
+
+* Geben Sie das Einkommen der Lehrer_innen an, die ab 2010-01-01 eingestellt worden sind. Das höchste Gehalt soll ganz oben in der Tabelle aufgelistet sein. 
+
+
+---
+
+# Datenexploration mit SELECT
+## Übungen
+
+* Welche Lehrer_innen (Name und Vorname) sind an welchen Schulen angestellt? Das Ergebnis soll nach Schulen und Nachnamen geordnet werden (aufsteigend).
+
+--
+
+
+```sql
+SELECT school, last_name, first_name
+FROM teachers
+ORDER BY school, last_name ASC
+```
+
+---
+
+class: center, middle
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; school &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; last_name &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; first_name &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; F.D. Roosevelt HS &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Reynolds &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Lee &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; F.D. Roosevelt HS &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Roush &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Kathleen &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; F.D. Roosevelt HS &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Smith &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Janet &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Myers Middle School &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Bush &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Samantha &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Myers Middle School &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Cole &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Samuel &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Myers Middle School &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Diaz &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Betty &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+
+---
+
+# Datenexploration mit SELECT
+## Übungen
+
+* Welche Lehrer_innen, deren Vorname mit "S" beginnen, haben ein Einkommen größer als 40.000?
+
+
+```sql
+SELECT salary, last_name, first_name
+FROM teachers
+WHERE first_name LIKE 'S%'
+        AND salary &gt; 40000;
+```
+
+--
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:right;"&gt; salary &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; last_name &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; first_name &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 43500 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Cole &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Samuel &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+
+---
+
+# Datenexploration mit SELECT
+## Übungen
+
+* Geben Sie das Einkommen der Lehrer_innen an, die ab 2010-01-01 eingestellt worden sind. Das höchste Gehalt soll ganz oben in der Tabelle aufgelistet sein. 
+
+
+```sql
+SELECT salary, last_name, first_name, hire_date
+FROM teachers
+WHERE hire_date &gt;= '2010-01-01' 
+ORDER BY salary DESC;
+```
+
+--
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:right;"&gt; salary &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; last_name &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; first_name &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; hire_date &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 38500 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Roush &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Kathleen &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 2010-10-22 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 36200 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Smith &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Janet &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 2011-10-30 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 36200 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Bush &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Samantha &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; 2011-10-30 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+
+???
+
+* Abfolge der Statements: 
+
+* FROM / JOIN and all the ON conditions
+* WHERE
+* GROUP BY
+* HAVING
+* SELECT 
+* ORDER BY
+* LIMIT
+
+
+---
+
+
+
+
+class: center, middle
+
+## Vielen Dank!
+
+[Prof. Dr. Jan Kirenz](https://www.kirenz.com)  
+
+HdM Stuttgart  
+Nobelstraße 10  
+70569 Stuttgart
+
+![](https://upload.wikimedia.org/wikipedia/commons/5/5e/HdM_Logo.svg)
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightLines": true,
+"highlightStyle": "github",
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

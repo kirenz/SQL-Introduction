@@ -1,0 +1,711 @@
+---
+title: "Einführung in SQL"
+subtitle: "Selektieren / Ordnen / Filtern"
+author: "Prof. Dr. Jan Kirenz"
+institute: "HdM Stuttgart"
+output:
+  xaringan::moon_reader:
+    css: ["footer-header.css", "default", "default-fonts"]
+    lib_dir: libs
+    nature:
+      titleSlideClass: [center, middle]
+      highlightLines: true
+      highlightStyle: github
+      countIncrementalSlides: false
+---
+layout: true
+  
+<div class="my-footer"><span> Einführung in SQL | Prof. Dr. Jan Kirenz </span></div> 
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = FALSE,
+	connection = "con"
+)
+
+library(kableExtra)
+```
+
+---
+class: middle
+
+background-image: url(https://www.practicalsqlbook.com/img/PracticalSQL_cover.jpg)
+background-position: 100% 5%
+
+
+### Dieses Tutorial   
+### basiert auf  
+###"A Beginner's 
+### Guide to 
+### Storytelling 
+### with Data"  
+### from Anthony 
+### DeBarros (2018)
+
+???
+DeBarros, A. (2018).  
+Practical SQL:  
+A Beginner's Guide  
+to Storytelling 
+with Data.    
+No Starch Press.
+---
+
+# Setup in R
+
+### Verbindung zur lokalen Datenbank herstellen
+
+* In R kann das Paket [`RPostgres`](https://db.rstudio.com/databases/postgresql/) genutzt werden
+* [RPostgres Übersicht](https://github.com/r-dbi/RPostgres)
+* [RPostgres Dokumentation](https://cran.r-project.org/web/packages/RPostgres/RPostgres.pdf)
+
+
+```{r, include=FALSE}
+pw = ""
+```
+
+* Das Passwort `pw` muss zuvor als Objekt gespeichert werden:
+
+```{r eval=FALSE}
+pw = "hier Passwort eingeben"
+```
+
+
+```{r}
+library(DBI)
+library(RPostgres)
+
+con <- dbConnect(RPostgres::Postgres(),
+                 dbname = "postgres",
+                  host = "localhost", 
+                  port = 5432, # hier den eigenen Port angeben
+                  user = "postgres", 
+                  password = pw)
+                 
+```
+
+???
+
+Clear the result:
+dbClearResult(res)
+
+Disconnect from the database:
+dbDisconnect(con)
+
+---
+
+## Tabelle erstellen
+
+* Tabelle erstellen mit `CREATE TABLE`. 
+
+* Wir erstellen zunächste eine Variable mit dem Namen `id` und versehen diese mit dem Datentyp `bigserial`. 
+
+```{sql Tabelle teachers, connection=con}
+CREATE TABLE teachers (
+    id bigserial,
+    first_name varchar(25),
+    last_name varchar(50),
+    school varchar(50),
+    hire_date date,
+    salary numeric
+);
+```
+
+---
+
+# Daten in Tabelle einfügen. 
+
+* Bei Zahlenwerten sind keine Anführungszeichen erforderlich.
+
+```{sql connection=con}
+INSERT INTO teachers (first_name, last_name, school, hire_date, salary)
+VALUES ('Janet', 'Smith', 'F.D. Roosevelt HS', '2011-10-30', 36200), 
+       ('Lee', 'Reynolds', 'F.D. Roosevelt HS', '1993-05-22', 65000),
+       ('Samuel', 'Cole', 'Myers Middle School', '2005-08-01', 43500),
+       ('Samantha', 'Bush', 'Myers Middle School', '2011-10-30', 36200),
+       ('Betty', 'Diaz', 'Myers Middle School', '2005-08-30', 43500),
+       ('Kathleen', 'Roush', 'F.D. Roosevelt HS', '2010-10-22', 38500);
+```
+
+???
+
+Tabelle muss ausgefüllt werden
+
+---
+
+# Datenexploration mit SELECT
+
+* Tabelle anzeigen
+
+```{sql tabelle-ausgeben, connection=con, tab.cap = NA, output.var="teach"}
+SELECT * 
+FROM teachers;
+```
+
+--
+
+```{r echo=FALSE}
+teach %>% 
+  kbl() %>% 
+  kable_styling(bootstrap_options = c("striped", 
+                                      "hover", 
+                                      "condensed", 
+                                      "responsive"))
+
+```
+
+
+---
+
+# Datenexploration mit SELECT
+
+* Abfrage an Datenbank stellen:
+
+```{sql connection=con, output.var="teach_first_name"}
+SELECT first_name
+FROM teachers;
+```
+
+--
+
+```{r echo=FALSE}
+
+teach_first_name %>% 
+  kbl() %>% 
+  kable_styling(bootstrap_options = c("striped", 
+                                      "hover", 
+                                      "condensed", 
+                                      "responsive"))
+```
+---
+
+# Datenexploration mit SELECT
+
+```{sql connection=con, output.var="teach_names_salary"}
+SELECT first_name, last_name, salary
+FROM teachers;
+```
+
+--
+
+```{r echo=FALSE}
+
+kable(teach_names_salary, format = 'html')
+
+```
+
+---
+
+# Datenexploration mit SELECT
+### DISTINCT
+
+* Auswahl von einzigartigen Fällen
+
+```{sql connection=con, output.var="teach_school"}
+SELECT DISTINCT school
+FROM teachers;
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(teach_school, format = 'html')
+```
+
+
+---
+
+# Datenexploration mit SELECT
+### DISTINCT
+
+
+```{sql connection=con, output.var="teach_school_salary"}
+SELECT DISTINCT school, salary
+FROM teachers;
+```
+
+
+
+--
+
+```{r echo=FALSE}
+knitr::kable(teach_school_salary, format = 'html')
+```
+
+???
+
+* Beispielhafte `DISTINCT` Abfragen:
+
+* Für alle "X" in dem Datensatz, was sind die zugehörigen "Y" werte. 
+
+ * Für jede Fabrik, was sind alle chemischen Produkte? 
+ * Zeige für jede Konzerthalle, welche Künstler diesen Monat auftreten. 
+
+---
+
+# Datenexploration mit SELECT
+### ORDER BY
+
+* Der Befehl verändert nicht die Original-Tabelle. 
+
+* `ORDER BY` sortiert automatisch aufsteigend (ASC für ascending). 
+
+* Falls eine absteigende Reihenfolge gewünscht wird, muss der Befehl `DESC` für descending hinzugefügt werden.
+
+---
+
+# Datenexploration mit SELECT
+### ORDER BY
+
+```{sql connection=con, output.var="teach_name_sal_order"}
+SELECT first_name, last_name, salary
+FROM teachers
+ORDER BY salary DESC;
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(teach_name_sal_order, format = 'html')
+```
+
+
+---
+
+# Datenexploration mit SELECT
+
+* Aufgabe: Erstellen Sie eine Tabelle mit den zuletzt eingestellten Lehrern pro Schule. Die Ergebnisse sollen nach Schule (aufsteigend) und Einstellungsdatum (absteigend) sortiert werden.
+
+--
+
+```{sql connection=con, output.var="teach_order"}
+SELECT last_name, school, hire_date
+FROM teachers
+ORDER BY school ASC, hire_date DESC;
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(teach_order, format = 'html')
+```
+
+---
+
+# Datenexploration mit SELECT
+### WHERE
+
+```{sql connection=con, output.var="teach_where_school"}
+SELECT last_name, school, hire_date
+FROM teachers
+WHERE school ='Myers Middle School'
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(teach_where_school, format = 'html')
+```
+
+---
+class: center, middle
+
+
+|Zeichen  | Bedeutung   | Beispiel
+|---|---|---
+|=  |Equal to | `WHERE school = 'Myers Middle School'`
+|<> |or != Not equal to | `WHERE school <> 'Myers Middle School'`
+|>  |Größer als | `WHERE salary > 20000`
+|<  |Kleiner als | `WHERE salary < 20000`
+|>= | Größer als oder gleich | `WHERE salary >=20000`
+|<= |Kleiner als | `WHERE salary <= 60500`
+|BETWEEN | Zwischen |  `WHERE salary BETWEEN 20000 AND 40000`
+|IN  | Innerhalb | `WHERE last_name IN ('Bush', 'Roush')` 
+|LIKE | Wie (case sensitive)| `WHERE first_name LIKE 'Sam %'`
+|ILIKE | Wie (case insensitive)| `WHERE first_name ILIKE 'sam %'`
+|NOT | Negiert eine der oberen Bedingungen | `WHERE first_name NOT LIKE 'sam %'`
+
+???
+* Beispielsweise wollen wir herausfinden, wekche Lehrer vor einem bestimmten Jahr eingestellt worden sind und mehr als 75.000 Dollar verdienen.
+
+---
+
+# Datenexploration mit SELECT
+### WHERE
+
+* Aufgabe: In welcher Schule unterrichtet Janet? 
+
+--
+
+```{sql , connection=con, output.var="teach_where_name"}
+SELECT first_name, school
+FROM teachers
+WHERE first_name = 'Janet';
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(teach_where_name, format = 'html')
+```
+
+---
+
+# Datenexploration mit SELECT
+### WHERE !=
+
+```{sql connection=con, output.var="teach_where_not_school"}
+SELECT school
+FROM teachers
+WHERE school != 'F.D. Rooselvelt HS';
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(teach_where_not_school, format = 'html')
+```
+
+---
+
+# Datenexploration mit SELECT
+### WHERE <
+
+* Welche Lehrer_innen wurden vor dem 01 Januar 2001 eingestellt?
+
+--
+
+```{sql connection=con, output.var="teach_where_smaller"}
+SELECT first_name, last_name, hire_date
+FROM teachers
+WHERE hire_date < '2000-01-01';
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(teach_where_smaller, format = 'html')
+```
+
+---
+
+# Datenexploration mit SELECT
+### WHERE >=
+
+```{sql connection=con, output.var="teach_where_higher"}
+SELECT first_name, last_name, salary
+FROM teachers
+WHERE salary >= 43500;
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(teach_where_higher, format = 'html')
+```
+
+
+---
+
+# Datenexploration mit SELECT
+### WHERE BETWEEN
+
+```{sql connection=con, output.var="teach_between"}
+SELECT first_name, last_name, school, salary
+FROM teachers
+WHERE salary BETWEEN 40000 AND 65000 
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(teach_between, format = 'html')
+```
+
+---
+
+# Datenexploration mit SELECT
+
+### LIKE, ILIKE und WHERE
+
+* Prozentzeichen: (%) Platzhalter für ein oder mehrere Zeichen.
+* Unterstrich: (_) Platzhalter für genau *ein* Zeichen 
+
+* Beispiel für die Suche nach dem Namen Baker mit LIKE (case sensitive):
+
+ * LIKE 'b%'
+ * LIKE '%ak%'
+ * LIKE '_aker%'
+ * LIKE 'ba_er'
+
+---
+
+# Datenexploration mit SELECT
+
+### LIKE, ILIKE und WHERE
+
+
+* Aufgabe: Welche Vornamen beginnen mit "sam" (mit Berücksichtigung der Groß- und Kleinschreibung)?
+
+--
+
+```{sql connection=con, output.var="teach_like"}
+SELECT first_name
+FROM teachers
+WHERE first_name LIKE 'sam%' 
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(teach_like, format = 'html')
+```
+
+* Diese Abfrage führt zu keinem Resultat, da `LIKE` case sensitive ist. 
+
+---
+
+# Datenexploration mit SELECT
+### WHERE ILIKE
+
+* Aufgabe: Welche Vornamen beginnen mit "sam" (ohne Berücksichtigung der Groß- und Kleinschreibung)?
+
+--
+
+```{sql connection=con, output.var="teach_ilike"}
+SELECT first_name
+FROM teachers
+WHERE first_name ILIKE 'sam%' 
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(teach_ilike, format = 'html')
+```
+
+
+---
+
+# Datenexploration mit SELECT
+
+### LIKE & ILIKE
+
+* Generell ist es empfehlenswert, **ILIKE** in Verbindung mit Platzhaltern zu nutzen, um nicht versehentlich Resultate aus der Suche auszuschließen. 
+
+* Dadurch werden auch Ergebnisse mit eingeschlossen, die versehentlich falsch in die Datenbank eingetragen worden sind.
+
+* Da LIKE und ILIKE nach Mustern in Daten suchen, kann die Suche relativ lange dauern. 
+
+???
+Die Performance der Suche kann durch das Verwenden von Indexes verbessert werden. siehe später...
+
+---
+
+# Datenexploration mit SELECT
+### WHERE, AND und OR
+
+* Es ist oft sinnvoll, Operatoren in einer Abfrage zu verbinden. 
+
+* Dies kann mit `AND` und `OR` umgesetzt werden.
+
+```{sql connection=con, output.var="teach_and"}
+SELECT *
+FROM teachers
+WHERE school = 'Myers Middle School'
+        AND salary < 40000;
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(teach_and, format = 'html')
+```
+
+---
+
+# Datenexploration mit SELECT
+### WHERE & OR
+
+* Aufgabe: Auflistung aller Personen mit Nachnamen Cole oder Bush.
+
+--
+
+```{sql connection=con, output.var="teach_or"}
+SELECT *
+FROM teachers
+WHERE last_name = 'Cole'
+        OR last_name = 'Bush';
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(teach_or, format = 'html')
+```
+
+---
+
+# Datenexploration mit SELECT
+### WHERE, AND und OR
+
+* Aufgabe: Welche Lehrer sind an der F.D. Roosevelt HS beschäftigt und haben entweder einen Verdienst unter 38.000 oder über 40.000? 
+
+--
+
+```{sql connection=con, output.var="teach_and_or"}
+SELECT *
+FROM teachers
+WHERE school = 'F.D. Roosevelt HS'
+        AND (salary < 38000 OR salary > 40000);
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(teach_and_or, format = 'html')
+```
+
+---
+
+# Datenexploration mit SELECT
+## Kombinierte Abfragen
+
+Beispiel für das allgemeine Schema eine Abfrage: 
+
+```
+SELECT column_names
+FROM table_names
+WHERE criteria
+ORDER BY column_names
+```
+---
+
+
+```{sql connection=con, output.var="teach_where_like_order"}
+SELECT first_name, last_name, school, hire_date, salary
+FROM teachers
+WHERE school LIKE '%Roos%'
+ORDER BY hire_date DESC;
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(teach_where_like_order, format = 'html')
+```
+
+
+---
+
+# Datenexploration mit SELECT
+## Übungen
+
+* Welche Lehrer_innen (Name und Vorname) sind an welchen Schulen angestellt? Das Ergebnis soll nach Schulen und Nachnamen geordnet werden (aufsteigend).
+
+
+* Welche Lehrer_innen, deren Vorname mit "S" beginnen, haben ein Einkommen größer als 40.000?
+
+* Geben Sie das Einkommen der Lehrer_innen an, die ab 2010-01-01 eingestellt worden sind. Das höchste Gehalt soll ganz oben in der Tabelle aufgelistet sein. 
+
+
+---
+
+# Datenexploration mit SELECT
+## Übungen
+
+* Welche Lehrer_innen (Name und Vorname) sind an welchen Schulen angestellt? Das Ergebnis soll nach Schulen und Nachnamen geordnet werden (aufsteigend).
+
+--
+
+```{sql connection=con, output.var="teach_1"}
+SELECT school, last_name, first_name
+FROM teachers
+ORDER BY school, last_name ASC
+```
+
+---
+
+class: center, middle
+
+```{r echo=FALSE}
+knitr::kable(teach_1, format = 'html')
+```
+
+
+---
+
+# Datenexploration mit SELECT
+## Übungen
+
+* Welche Lehrer_innen, deren Vorname mit "S" beginnen, haben ein Einkommen größer als 40.000?
+
+```{sql connection=con, output.var="teach_2"}
+SELECT salary, last_name, first_name
+FROM teachers
+WHERE first_name LIKE 'S%'
+        AND salary > 40000;
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(teach_2, format = 'html')
+```
+
+
+---
+
+# Datenexploration mit SELECT
+## Übungen
+
+* Geben Sie das Einkommen der Lehrer_innen an, die ab 2010-01-01 eingestellt worden sind. Das höchste Gehalt soll ganz oben in der Tabelle aufgelistet sein. 
+
+```{sql connection=con, output.var="teach_3"}
+SELECT salary, last_name, first_name, hire_date
+FROM teachers
+WHERE hire_date >= '2010-01-01' 
+ORDER BY salary DESC;
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(teach_3, format = 'html')
+```
+
+
+???
+
+* Abfolge der Statements: 
+
+* FROM / JOIN and all the ON conditions
+* WHERE
+* GROUP BY
+* HAVING
+* SELECT 
+* ORDER BY
+* LIMIT
+
+
+---
+
+```{r include = FALSE}
+dbDisconnect(con)
+
+```
+
+
+class: center, middle
+
+## Vielen Dank!
+
+[Prof. Dr. Jan Kirenz](https://www.kirenz.com)  
+
+HdM Stuttgart  
+Nobelstraße 10  
+70569 Stuttgart
+
+![](https://upload.wikimedia.org/wikipedia/commons/5/5e/HdM_Logo.svg)

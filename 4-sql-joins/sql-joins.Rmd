@@ -1,0 +1,531 @@
+---
+title: "Introduction to SQL"
+subtitle: "Joins"
+author: "Prof. Dr. Jan Kirenz"
+institute: "HdM Stuttgart"
+output:
+  xaringan::moon_reader:
+    css: ["footer-header.css", "default", "default-fonts"]
+    lib_dir: libs
+    nature:
+      titleSlideClass: [center, middle]
+      highlightLines: true
+      highlightStyle: github
+      countIncrementalSlides: false
+---
+layout: true
+  
+<div class="my-footer"><span> Introduction to SQL | Prof. Dr. Jan Kirenz </span></div> 
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(connection = "con")
+```
+
+???
+
+---
+
+# PostgreSQL Setup
+
+```{r, include=FALSE}
+pw = ""
+```
+
+```
+pw = "your_password"
+```
+
+```{r}
+library(DBI)
+library(RPostgres)
+
+con <- dbConnect(RPostgres::Postgres(),
+                 dbname = "postgres",
+                  host = "localhost", 
+                  port = 5432,
+                  user = "postgres", 
+                  password = pw)
+```
+
+---
+class: inverse, center, middle
+
+### The examples in this presentation are based on the excellent book "A Beginner's Guide to Storytelling with Data" from Anthony DeBarros (2018). 
+
+---
+# JOIN example: Departments & Employees
+
+## CREATE the departments table:
+
+```{sql connection=con}
+CREATE TABLE departments (
+    dept_id bigserial,
+    dept varchar(100),
+    city varchar(100),
+    CONSTRAINT dept_key PRIMARY KEY (dept_id),
+    CONSTRAINT dept_city_unique UNIQUE (dept, city)
+);
+```
+
+
+--
+
+* `dept_id` column is the table's primary key
+
+* Table includes a **UNIQUE** constraint
+
+ * Guarantees that values in a column are unique. 
+
+ * It requires that each row have a unique pair of values for *dept* and *city*
+ 
+* We add these constraints to avoid duplicate data.
+ 
+---
+class: inverse, center, middle
+
+## PRIMARY KEY
+
+### A primary key is a column whose values uniquely identify each row in a table.
+
+
+### This column has certain contstraints: it must have a unique value for each row and it can't have missing values.
+
+---
+
+## CREATE employees table
+
+```{sql connection=con}
+CREATE TABLE employees (
+    emp_id bigserial,
+    first_name varchar(100),
+    last_name varchar(100),
+    salary integer,
+    dept_id integer REFERENCES departments (dept_id),
+    CONSTRAINT emp_key PRIMARY KEY (emp_id),
+    CONSTRAINT emp_dept_unique UNIQUE (emp_id, dept_id)
+);
+```
+
+---
+
+## CREATE employees table
+
+- `emp_id` is the table's **primary key**: it uniquely identifies each row in the employees table
+
+- `dept_id` (we added it as a constraint when creating the table) is called a **foreign key** 
+
+ - It requires a value entered in a column to already exist in the primary key of the table it **references**.
+ 
+ -  Values in `dept_id` in the employees table must exist in `dept_id` in the departments table
+
+- UNIQUE: each row must have a **unique** pair of emp_id and dept_id
+
+---
+
+class: inverse, center, middle
+
+## FOREIGN KEY 
+
+### Unlike a primary key, a **foreign key** column can be empty or it can contain duplicate values
+
+---
+## INSERT values
+
+
+```{sql connection=con}
+INSERT INTO departments (dept, city)
+VALUES
+    ('Tax', 'Atlanta'),
+    ('IT', 'Boston');
+```
+
+--
+
+```{sql connection=con}
+INSERT INTO employees (first_name, last_name, salary, dept_id)
+VALUES
+    ('Nancy', 'Jones', 62500, 1),
+    ('Lee', 'Smith', 59300, 1),
+    ('Soo', 'Nguyen', 83000, 2),
+    ('Janet', 'King', 95000, 2);
+```
+
+---
+
+## SELECT values
+
+```{sql connection=con, output.var="de_all"}
+SELECT *
+FROM departments;
+```
+
+--
+
+```{r, echo=FALSE}
+DT::datatable(
+  head(de_all, 4),
+  fillContainer = FALSE, options = list(pageLength = 4)
+)
+```
+
+---
+## SELECT values
+
+
+```{sql connection=con, output.var="em_all"}
+SELECT *
+FROM employees;
+```
+
+--
+
+```{r, echo=FALSE}
+DT::datatable(
+  head(de_all, 4),
+  fillContainer = FALSE, options = list(pageLength = 4)
+)
+```
+
+---
+
+## JOIN the tables
+
+```{sql connection=con, output.var="em_de_j"}
+SELECT *
+FROM employees JOIN departments
+ON employees.dept_id = departments.dept_id;
+```
+
+--
+
+```{r, echo=FALSE}
+DT::datatable(
+  head(em_de_j, 4),
+  fillContainer = FALSE, options = list(pageLength = 4)
+)
+```
+
+---
+
+# JOIN Types
+
+* Creating two tables to explore JOIN types
+
+```{sql connection=con}
+CREATE TABLE schools_left (
+    id integer CONSTRAINT left_id_key PRIMARY KEY,
+    left_school varchar(30)
+);
+```
+
+--
+
+```{sql connection=con}
+CREATE TABLE schools_right (
+    id integer CONSTRAINT right_id_key PRIMARY KEY,
+    right_school varchar(30)
+);
+```
+
+---
+
+### Insert values
+
+```{sql connection=con}
+INSERT INTO schools_left (id, left_school) VALUES
+    (1, 'Oak Street School'),
+    (2, 'Roosevelt High School'),
+    (5, 'Washington Middle School'),
+    (6, 'Jefferson High School');
+```
+
+--
+
+```{sql connection=con}
+INSERT INTO schools_right (id, right_school) VALUES
+    (1, 'Oak Street School'),
+    (2, 'Roosevelt High School'),
+    (3, 'Morrison Elementary'),
+    (4, 'Chase Magnet Academy'),
+    (6, 'Jefferson High School');
+```
+
+---
+
+# JOIN
+
+- we use JOIN or INNER JOIN, when we want to return rows that have a match in the columns we used for the join
+
+--
+
+```{sql connection=con, output.var="sc_j"}
+SELECT *
+FROM schools_left JOIN schools_right
+ON schools_left.id = schools_right.id;
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(sc_j, format = 'html')
+```
+
+---
+
+# INNER JOIN
+
+```{sql connection=con, output.var="sc_ij"}
+SELECT *
+FROM schools_left INNER JOIN schools_right
+ON schools_left.id = schools_right.id;
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(sc_ij, format = 'html')
+```
+
+---
+
+# JOIN or INNER JOIN
+
+- Here the join includes all columns in both tables (*).
+
+- Then we specify the two tables to join around the JOIN keyword.
+
+- At last we specify which columns we're joining on, here the id columns of both tables.
+
+- Three school IDs match in both tables, JOIN or INNER JOIN returns only the three rows of those IDs that match.
+
+- Values (schools) that exist only in one of the two tables don't appear in the result.
+
+- Notice that the columns from the left table display on the left of the result table.
+
+- Use JOIN or INNER JOIN when you're working with well-structured, well-maintained data sets and only need to find rows that exist in all the tables you're joining.
+
+---
+
+# INNER JOIN with USING
+
+```{sql connection=con, output.var="sc_ij_id"}
+SELECT *
+FROM schools_left INNER JOIN schools_right
+USING (id);
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(sc_ij_id, format = 'html')
+```
+
+---
+
+# LEFT JOIN
+
+- LEFT JOIN returns all rows from the left table and displays blank rows from the right table if no matching values are found in the joined columns.
+
+--
+
+```{sql connection=con, output.var="sc_left_j"}
+SELECT *
+FROM schools_left LEFT JOIN schools_right
+ON schools_left.id = schools_right.id;
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(sc_left_j, format = 'html')
+```
+
+
+---
+class: inverse, center, middle
+
+## RIGHT JOIN & LEFT JOIN
+
+### Use either of these join types when you want your query results to contain **all** the rows from one of the tables... 
+
+### ... or when you want to look for **missing values** in one of the tables.
+
+---
+
+# RIGHT JOIN
+
+- RIGHT JOIN returns all rows from the right table and displays blank rows from the left table if no matching values are found in the joined columns
+
+--
+
+```{sql connection=con, output.var="sc_right_j"}
+SELECT *
+FROM schools_left RIGHT JOIN schools_right
+ON schools_left.id = schools_right.id;
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(sc_right_j, format = 'html')
+```
+
+---
+
+# Aliasing (AS)
+
+* Hint: Instead of writing the full table name, you can use table aliasing as a shortcut:
+
+```{sql connection=con, output.var="al_1"}
+SELECT e.salary, d.city
+FROM employees AS e
+INNER JOIN departments AS d
+ON e.dept_id = d.dept_id;
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(al_1, format = 'html')
+```
+
+---
+
+# FULL OUTER JOIN
+
+- Shows **all** rows from both tables in a join, regardless of whether any match:
+
+```{sql connection=con, output.var="sc_outer1"}
+SELECT *
+FROM schools_left FULL OUTER JOIN schools_right
+ON schools_left.id = schools_right.id;
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(sc_outer1, format = 'html')
+```
+
+
+---
+
+## FULL OUTER JOIN
+
+```{sql connection=con, output.var="sc_outer2"}
+SELECT *
+FROM schools_right FULL OUTER JOIN schools_left
+ON schools_right.id = schools_left.id;
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(sc_outer2, format = 'html')
+```
+
+
+---
+
+# FULL OUTER JOIN with USING
+
+
+```{sql connection=con, output.var="sc_outer1_use"}
+SELECT *
+FROM schools_left FULL OUTER JOIN schools_right
+USING (id);
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(sc_outer1_use, format = 'html')
+```
+
+---
+
+# CROSS JOIN
+
+
+```{sql connection=con, output.var="sc_cross"}
+SELECT *
+FROM schools_left CROSS JOIN schools_right; 
+```
+
+* Lines up each row in the left table with each row in the right table to present all possible combinations of row. 
+
+* Because the join doesn't need to find matches between key fields, there is no need to provide the clause using ON or USING.
+
+---
+class: center, middle
+
+```{r echo=FALSE}
+knitr::kable(sc_cross, format = 'html')
+```
+
+
+---
+
+# Using NULL to find missing values
+
+```{sql connection=con, output.var="sc_null"}
+SELECT *
+FROM schools_left LEFT JOIN schools_right
+ON schools_left.id = schools_right.id
+WHERE schools_right.id IS NULL;
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(sc_null, format = 'html')
+```
+
+- The result shows only the one row from the left table that didn't have a match on the right side.
+
+
+---
+
+class: center, middle
+
+
+
+```{sql connection=con, include=FALSE}
+DROP TABLE employees;
+```
+
+
+```{sql connection=con, include=FALSE}
+DROP TABLE schools_left;
+```
+
+
+```{sql connection=con, include=FALSE}
+DROP TABLE schools_right;
+```
+
+
+```{sql connection=con, include=FALSE}
+DROP TABLE departments;
+```
+
+
+```{r include = FALSE}
+dbDisconnect(con)
+
+```
+
+
+
+
+
+## Thank you!
+
+[Prof. Dr. Jan Kirenz](https://www.kirenz.com)  
+
+HdM Stuttgart  
+Nobelstraße 10  
+70569 Stuttgart
+
+![](https://upload.wikimedia.org/wikipedia/commons/5/5e/HdM_Logo.svg)

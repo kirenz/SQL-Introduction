@@ -1,0 +1,444 @@
+---
+title: "Einführung in SQL Handout"
+author: "Prof. Dr. Jan Kirenz"
+institute: "HdM Stuttgart"
+output: html_document
+---
+
+# Setup
+
+### Verbindung zu Datenbank herstellen
+
+* Das Passwort `pw` muss zuerst als Objekt gespeichert werden.
+
+
+```{r}
+# hier das Passwort eintragen (Platzhalter ersetzen)
+pw = "Platzhalter"
+```
+
+
+```{r}
+library(DBI)
+library(RPostgreSQL)
+
+drv <- dbDriver("PostgreSQL")
+con <- dbConnect(drv, dbname = "postgres",
+                 host = "localhost", port = 5433,
+                 user = "postgres", password = pw)
+```
+
+
+
+---
+
+## Neue Datenbank erstellen
+
+Datenbank erstellen mit `CREATE DATABASE`
+
+```{sql connection=con}
+CREATE DATABASE analysis; -- Befehle enden immer mit ; in der letzten Zeile
+```
+
+
+---
+
+# RPostgreSQL
+
+* Beispielhafter Befehl in dem Paket **RPostgreSQL** 
+
+```{r}
+# Liste alle Tabellen in der aktuellen Verbindung auf
+dbListTables(con)
+```
+
+
+---
+
+## Tabelle erstellen
+
+* Tabelle erstellen mit `CREATE TABLE`. 
+
+* Wir erstellen zunächste eine Variable mit dem Namen `id` und versehen diese mit dem Datentyp `bigserial`. 
+
+```{sql Tabelle teachers, connection=con}
+CREATE TABLE teachers (
+    id bigserial,
+    first_name varchar(25),
+    last_name varchar(50),
+    school varchar(50),
+    hire_date date,
+    salary numeric
+);
+```
+
+---
+
+# Daten in Tabelle einfügen. 
+
+* Bei Zahlenwerten sind keine Anführungszeichen erforderlich.
+
+```{sql connection=con}
+INSERT INTO teachers (first_name, last_name, school, hire_date, salary)
+VALUES ('Janet', 'Smith', 'F.D. Roosevelt HS', '2011-10-30', 36200), 
+       ('Lee', 'Reynolds', 'F.D. Roosevelt HS', '1993-05-22', 65000),
+       ('Samuel', 'Cole', 'Myers Middle School', '2005-08-01', 43500),
+       ('Samantha', 'Bush', 'Myers Middle School', '2011-10-30', 36200),
+       ('Betty', 'Diaz', 'Myers Middle School', '2005-08-30', 43500),
+       ('', '', 'F.D. Roosevelt HS', '', ); -- hier die fehlenden Werte eintragen
+```
+
+---
+
+# Datenexploration mit SELECT
+
+* Tabelle anzeigen
+
+```{sql tabelle-ausgeben, connection=con}
+SELECT * 
+FROM ; -- Name der Tabelle nach FROM eintragen
+```
+
+
+---
+
+# Datenexploration mit SELECT
+
+* Abfrage an Datenbank stellen (Ausgabe aller Vornamen: first_name):
+
+```{sql connection=con}
+SELECT  -- Variable eingeben
+FROM teachers;
+```
+
+--
+---
+
+# Datenexploration mit SELECT
+
+```{sql connection=con}
+SELECT first_name, last_name, salary
+FROM teachers;
+```
+
+
+---
+
+# Datenexploration mit SELECT
+### DISTINCT
+
+* Auswahl von einzigartigen Fällen
+
+```{sql connection=con}
+SELECT  school -- Befehl DISTINCT einfügen
+FROM teachers;
+```
+
+
+---
+
+# Datenexploration mit SELECT
+### DISTINCT
+
+
+```{sql connection=con}
+SELECT DISTINCT school, salary
+FROM teachers;
+```
+
+
+* Beispielhafte `DISTINCT` Abfragen:
+
+* Für alle "X" in dem Datensatz, was sind die zugehörigen "Y" werte. 
+
+ * Für jede Fabrik, was sind alle dort produzierten chemischen Produkte? 
+ * Zeige für jede Konzerthalle, welche Künstler diesen Monat dort auftreten. 
+
+---
+
+# Datenexploration mit SELECT
+### ORDER BY
+
+* Der Befehl verändert nicht die Original-Tabelle. 
+
+* `ORDER BY` sortiert automatisch aufsteigend (ASC für ascending). 
+
+* Falls eine absteigende Reihenfolge gewünscht wird, muss der Befehl `DESC` für descending hinzugefügt werden.
+
+---
+
+# Datenexploration mit SELECT
+### ORDER BY
+
+```{sql connection=con}
+SELECT first_name, last_name, salary
+FROM teachers
+ORDER BY salary DESC;
+```
+
+
+---
+
+# Datenexploration mit SELECT
+
+* Erstellen Sie eine Tabelle mit den zuletzt eingestellten Lehrern pro Schule. Die Ergebnisse sollen nach Schule (aufsteigend) und Einstellungsdatum (absteigend) sortiert werden.
+
+```{sql connection=con}
+SELECT 
+FROM teachers
+ORDER BY school ASC, hire_date DESC;
+```
+
+
+---
+
+# Datenexploration mit SELECT
+### WHERE
+
+```{sql connection=con}
+SELECT last_name, school, hire_date
+FROM teachers
+WHERE school ='Myers Middle School'
+```
+
+---
+
+
+|Zeichen  | Bedeutung   | Beispiel
+|---|---|---
+|=  |Equal to | `WHERE school = 'Myers Middle School'`
+|<> |or != Not equal to | `WHERE school <> 'Myers Middle School'`
+|>  |Größer als | `WHERE salary > 20000`
+|<  |Kleiner als | `WHERE salary < 20000`
+|>= | Größer als oder gleich | `WHERE salary >=20000`
+|<= |Kleiner als | `WHERE salary <= 60500`
+|BETWEEN | Zwischen |  `WHERE salary BETWEEN 20000 AND 40000`
+|IN  | Innerhalb | `WHERE last_name IN ('Bush', 'Roush')` 
+|LIKE | Wie (case sensitive)| `WHERE first_name LIKE 'Sam %'`
+|ILIKE | Wie (case insensitive)| `WHERE first_name ILIKE 'sam %'`
+|NOT | Negiert eine der oberen Bedingungen | `WHERE first_name NOT LIKE 'sam %'`
+
+---
+
+# Datenexploration mit SELECT
+### WHERE
+
+* Aufgabe: In welcher Schule unterrichtet Janet? 
+
+```{sql connection=con}
+SELECT first_name, last_name, school
+FROM teachers
+WHERE first_name = 'Janet';
+```
+
+
+
+---
+
+# Datenexploration mit SELECT
+### WHERE !=
+
+```{sql connection=con}
+SELECT school
+FROM teachers
+WHERE school != 'F.D. Rooselvelt HS';
+```
+
+
+---
+
+# Datenexploration mit SELECT
+### WHERE <
+
+* Aufgabe: Welche Lehrer_innen wurden vor dem 01 Januar 2001 eingestellt?
+
+```{sql connection=con}
+
+
+```
+
+
+---
+
+# Datenexploration mit SELECT
+### WHERE >=
+
+```{sql connection=con}
+SELECT first_name, last_name, salary
+FROM teachers
+WHERE salary >= 43500;
+```
+
+
+---
+
+# Datenexploration mit SELECT
+### WHERE BETWEEN
+
+```{sql connection=con}
+SELECT first_name, last_name, school, salary
+FROM teachers
+WHERE salary BETWEEN 40000 AND 65000 
+```
+
+
+---
+
+# Datenexploration mit SELECT
+
+### LIKE, ILIKE und WHERE
+
+* Prozentzeichen: (%) Platzhalter für ein oder mehrere Zeichen.
+* Unterstrich: (_) Platzhalter für genau *ein* Zeichen 
+
+* Beispiel für die Suche nach dem Namen Baker mit LIKE (case sensitive):
+
+ * LIKE 'b%'
+ * LIKE '%ak%'
+ * LIKE '_aker%'
+ * LIKE 'ba_er'
+--
+
+* Aufgabe: Welche Vornamen beginnen mit "sam" (mit Berücksichtigung der Groß- und Kleinschreibung)?
+
+```{sql connection=con}
+SELECT first_name
+FROM teachers
+WHERE first_name LIKE 'sam%' 
+```
+
+
+
+---
+
+# Datenexploration mit SELECT
+### WHERE ILIKE
+
+* Aufgabe: Welche Vornamen beginnen mit "sam" (ohne Berücksichtigung der Groß- und Kleinschreibung)?
+
+
+```{sql connection=con}
+SELECT first_name
+FROM teachers
+WHERE first_name ILIKE 'sam%' 
+```
+
+
+---
+
+# Datenexploration mit SELECT
+
+### LIKE & ILIKE
+
+* Generell ist es empfehlenswert, **ILIKE** in Verbindung mit Platzhaltern zu nutzen, um nicht versehentlich Resultate aus der Suche auszuschließen. 
+
+* Dadurch werden auch Ergebnisse mit eingeschlossen, die versehentlich falsch in die Datenbank eingetragen worden sind.
+
+* Da LIKE und ILIKE nach Mustern in Daten suchen, kann die Suche relativ lange dauern. 
+
+
+---
+
+# Datenexploration mit SELECT
+### WHERE, AND und OR
+
+* Es ist oft sinnvoll, Operatoren in einer Abfrage zu verbinden. 
+
+* Dies kann mit `AND` und `OR` umgesetzt werden.
+
+```{sql connection=con}
+SELECT *
+FROM teachers
+WHERE school = 'Myers Middle School'
+        AND salary < 40000;
+```
+
+
+---
+
+# Datenexploration mit SELECT
+### WHERE & OR
+
+* Aufgabe: Auflistung aller Personen mit Nachnamen Cole oder Bush.
+
+```{sql connection=con}
+
+
+```
+
+
+---
+
+# Datenexploration mit SELECT
+### WHERE, AND und OR
+
+* Aufgabe: Welche Lehrer sind an der F.D. Roosevelt HS beschäftigt und haben entweder einen Verdienst unter 38.000 oder über 40.000? 
+
+
+```{sql connection=con}
+
+```
+
+
+---
+
+# Datenexploration mit SELECT
+## Kombinierte Abfragen
+
+Beispiel für das allgemeine Schema eine Abfrage: 
+
+```
+SELECT column_names
+FROM table_names
+WHERE criteria
+ORDER BY column_names
+```
+---
+
+
+```{sql connection=con}
+SELECT first_name, last_name, school, hire_date, salary
+FROM teachers
+WHERE school LIKE '%Roos%'
+ORDER BY hire_date DESC;
+```
+
+
+---
+
+# Datenexploration mit SELECT
+## Übungen
+
+* Welche Lehrer_innen (Name und Vorname) sind an welchen Schulen angestellt? Das Ergebnis soll nach Schulen und Nachnamen geordnet werden (aufsteigend).
+
+--
+
+```{sql connection=con}
+
+
+```
+
+
+
+---
+
+# Datenexploration mit SELECT
+## Übungen
+
+* Welche Lehrer_innen, deren Vorname mit "S" beginnen, haben ein Einkommen größer als 40.000?
+
+```{sql connection=con}
+
+```
+
+
+---
+
+# Datenexploration mit SELECT
+## Übungen
+
+* Geben Sie das Einkommen der Lehrer_innen an, die ab 2010-01-01 eingestellt worden sind. Das höchste Gehalt soll ganz oben in der Tabelle aufgelistet sein. 
+
+```{sql connection=con}
+
+```

@@ -1,0 +1,1025 @@
+---
+title: "Introduction to SQL"
+subtitle: "Inspect and Modify Data"
+author: "Prof. Dr. Jan Kirenz"
+institute: "HdM Stuttgart"
+output:
+  xaringan::moon_reader:
+    css: ["footer-header.css", "default", "default-fonts"]
+    lib_dir: libs
+    nature:
+      titleSlideClass: [center, middle]
+      highlightLines: true
+      highlightStyle: github
+      countIncrementalSlides: false
+---
+layout: true
+  
+<div class="my-footer"><span> Introduction to SQL | Prof. Dr. Jan Kirenz </span></div> 
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(connection = "con")
+library(DT)
+```
+
+
+---
+
+# Setup
+
+
+```{r, include=FALSE}
+pw = ""
+```
+
+```
+pw = "your_password"
+```
+
+```{r}
+
+library(DBI)
+library(RPostgres)
+
+con <- dbConnect(RPostgres::Postgres(),
+                 dbname = "postgres",
+                  host = "localhost", 
+                  port = 5432,
+                  user = "postgres", 
+                  password = pw)
+```
+
+* Note: the examples used in this presentation are based on the excellent book  "A Beginner's Guide to Storytelling with Data" from Anthony DeBarros (2018). 
+
+---
+## Inspecting and modifying data
+
+
+* Create Table:
+
+```{sql connection=con}
+CREATE TABLE meat_poultry_egg_inspect (
+    est_number varchar(50) CONSTRAINT est_number_key PRIMARY KEY,
+    company varchar(100),
+    street varchar(100),
+    city varchar(30),
+    st varchar(2),
+    zip varchar(5),
+    phone varchar(14),
+    grant_date date,
+    activities text,
+    dbas text
+);
+```
+
+---
+## Inspecting and modifying data
+### Import data 
+
+* Data: [MPI_Directory_by_Estaplishment_Name.csv]https://github.com/kirenz/datasets/blob/master/MPI_Directory_by_Establishment_Name.csv)
+
+```{sql connection=con}
+COPY meat_poultry_egg_inspect
+FROM '/tmp/MPI_Directory_by_Establishment_Name.csv'
+WITH (FORMAT CSV, HEADER, DELIMITER ',');
+```
+
+---
+## Inspecting and modifying data
+### Create index
+
+```{sql connection=con }
+CREATE INDEX company_idx ON meat_poultry_egg_inspect (company);
+```
+
+```{sql connection=con, output.var="mp_check" }
+SELECT *
+FROM meat_poultry_egg_inspect
+LIMIT 20
+```
+
+
+---
+
+class: middle, center
+```{r, echo=FALSE}
+DT::datatable(
+  head(mp_check, 5),
+  fillContainer = FALSE, options = list(pageLength = 4)
+)
+```
+
+---
+## Inspecting and modifying data
+### Inspect data 
+
+* Count rows:
+
+```{sql connection=con, output.var="mp_count" }
+-- Count the rows imported:
+SELECT count(*) 
+FROM meat_poultry_egg_inspect;
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(mp_count, format = 'html')
+```
+
+---
+## Inspecting and modifying data
+### Inspect data 
+
+* Finding multiple companies at the same address 
+
+```{sql connection=con, output.var="mp_having_ad" }
+SELECT company,
+       street,
+       city,
+       st,
+       count(*) AS address_count
+FROM meat_poultry_egg_inspect
+GROUP BY company, street, city, st
+HAVING count(*) > 1     -- #<<
+ORDER BY company, street, city, st;
+```
+
+---
+class: middle, center
+
+```{r, echo=FALSE}
+DT::datatable(
+  head(mp_having_ad, 60),
+  fillContainer = FALSE, options = list(pageLength = 4)
+)
+```
+
+???
+
+Manche Unternehmen sind mehrfach bei der gleichen Adresse gelistet. Dies ist nicht zwingend ein Fehler. Möglicherweise sind sie unter verschiedenen Unternehmenstypen gelistet. Dies müsste in den Daten nun geprüft werden. 
+
+---
+## Inspecting and modifying data
+### Missing values
+
+* Check wether any rows are missing
+
+* How many of the companies are in each state?
+
+```{sql connection=con, output.var="mp_as" }
+-- Grouping and counting states
+SELECT st, 
+       count(*) AS st_count
+FROM meat_poultry_egg_inspect
+GROUP BY st
+ORDER BY st NULLS FIRST;    --#<<
+```
+
+* NULL values will either appear first or last in a sorted column (depending on the database).
+
+* You can specify `NULLS FIRST` or `NULLS LAST` to an `ORDER BY`
+
+---
+## Inspecting and modifying data
+
+```{r, echo=FALSE}
+DT::datatable(
+  head(mp_as, 60),
+  fillContainer = FALSE, options = list(pageLength = 5)
+)
+```
+
+???
+
+Es sind mehr als 50 US Staaten, da Puerto Rico, Guam und American Samoa enthalten sind. Alaska (AK) ist mit 17 Unternehmen aufgeführt.
+
+Auf Seite 12 ist zu sehen, dass es 3 fehlende Werte bei ST gibt
+
+---
+
+## Inspecting and modifying data
+### Find missing values
+
+* Using `IS NULL` to find missing values in the st column.
+
+```{sql connection=con, output.var="mp_na" }
+SELECT est_number,
+       company,
+       city,
+       st,
+       zip
+FROM meat_poultry_egg_inspect
+WHERE st IS NULL;       --#<<
+```
+
+---
+
+```{r, echo=FALSE}
+DT::datatable(
+  head(mp_na, 60),
+  fillContainer = FALSE, options = list(pageLength = 5)
+)
+```
+
+```{r echo=FALSE}
+#knitr::kable(mp_na, format = 'html')
+```
+
+---
+## Inspecting and modifying data
+
+* We’ve discovered that we’ll need to add 3 missing values to the st column to clean up this table. 
+
+* Let’s look at what other issues exist in our data set and make a list of cleanup tasks.
+
+---
+
+## Inspecting and modifying data
+### Checking inconsistent data values
+
+* Using GROUP BY and count() to find inconsistent names
+
+
+```{sql connection=con, output.var="mp_names" }
+SELECT company,
+       count(*) AS company_count
+FROM meat_poultry_egg_inspect
+GROUP BY company
+ORDER BY company ASC;
+```
+
+---
+
+```{r, echo=FALSE}
+DT::datatable(
+  head(mp_names, 1000),
+  fillContainer = FALSE, options = list(pageLength = 8)
+)
+```
+
+
+???
+
+Armoour 4 different spellings
+
+---
+## Inspecting and modifying data
+### Checking for malformed values 
+
+* length() is a string function that counts the number of characters in a string
+
+
+---
+## Inspecting and modifying data
+### Checking for malformed values 
+
+* Using length() and count() to test the zip column
+
+```{sql connection=con, output.var="mp_zip" }
+SELECT length(zip),
+       count(*) AS length_count
+FROM meat_poultry_egg_inspect
+GROUP BY length(zip)
+ORDER BY length(zip) ASC;
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(mp_zip, format = 'html')
+```
+
+* What happend here?
+
+---
+## Inspecting and modifying data
+### Checking for malformed values 
+
+* Question: What happens if you store the value "0174" as 
+  * text?
+  * integer?
+
+???
+
+Die PLZ wurde als integer gespeichert...
+---
+## Inspecting and modifying data
+### Checking for malformed values 
+
+* Filtering with length() to find short zip values
+
+```{sql connection=con, output.var="mp_zip_5" }
+SELECT st,
+       count(*) AS st_count
+FROM meat_poultry_egg_inspect
+WHERE length(zip) < 5
+GROUP BY st
+ORDER BY st ASC;
+```
+
+---
+class: center, middle
+
+```{r echo=FALSE}
+knitr::kable(mp_zip_5, format = 'html')
+```
+
+---
+## Inspecting and modifying data
+### Items to correct
+
+* Missing values for three rows in the st column 
+
+* Inconsistent spelling of at least one company’s name 
+
+* Inaccurate ZIP Codes due to file conversion
+
+---
+## Inspecting and modifying data
+### Modifying tables, columns and data
+
+* ALTER TABLE
+
+* Review additional [`ALTER TABLE` Options](https://www.postgresql.org/docs/current/sql-altertable.html) in PostgreSQL
+
+* UPDATE
+
+* ADD COLUMN
+
+* ALTER COLUMN
+
+* DROP COLUMN
+
+---
+## Inspecting and modifying data
+### Modifying tables with ALTER TABLE
+
+* Adding a column
+
+ * ALTER TABLE table ADD COLUMN column data_type;
+
+* Delete a column
+
+ * ALTER TABLE table DROP COLUMN column; 
+
+* To change the data type of a column, we would use this code: 
+
+ * ALTER TABLE table ALTER COLUMN column SET DATA TYPE data_type; 
+
+
+---
+## Inspecting and modifying data
+### Modifying tables with ALTER TABLE
+
+* Adding a NOT NULL constraint to a column will look like the following: 
+
+ * ALTER TABLE table ALTER COLUMN column SET NOT NULL;
+
+Note that in PostgreSQL and some other systems, adding a constraint to the table causes all rows to be checked to see whether they comply with the constraint. If the table has millions of rows, this could take a while.
+
+* Removing the NOT NULL constraint looks like this:
+ * ALTER TABLE table ALTER COLUMN column DROP NOT NULL;
+
+---
+## Inspecting and modifying data
+### Modifying values with UPDATE
+
+* The UPDATE statement modifies the data in a column in all rows or in a subset of rows that meet a condition.
+
+```
+UPDATE table
+SET column = value
+```
+
+* The new value to place in the column can be a string, number, the name of another column, or even a query or expression that generates a value. 
+
+* We can update values in multiple columns at a time by adding additional columns and source values, and separating each column and value statement with a comma:
+
+```
+UPDATE table
+SET column_a = value,
+SET column_b = value;
+
+```
+---
+## Inspecting and modifying data
+### Modifying values with UPDATE
+
+* Restrict update to certain rows with WHERE
+
+```
+UPDATE table
+SET column = value
+WHERE criteria; 
+```
+
+* Update one table with values from another table. 
+
+* Standard ANSI SQL requires that we use a __subquery__ (we cover this in a seperate presentation), a query inside a query, to specify which values and rows to update: 
+
+```
+UPDATE table
+SET column = (SELECT column
+              FROM table_b
+              WHERE table.column = table_b.column)
+WHERE EXISTS (SELECT column
+              FROM table_b
+              WHERE table.column = table_b.column);
+```
+???
+ * The value portion of the SET clause is a subquery, which is a SELECT statement inside parentheses that generates the values for the update. 
+
+ * Similarly, the WHERE EXISTS clause uses a SELECT statement to generate values that serve as the filter for the update.
+
+---
+## Inspecting and modifying data
+### Modifying values with UPDATE
+
+* Some database managers offer additional syntax for updating across tables. 
+
+* PostgreSQL supports the ANSI standard but also a simpler syntax using a FROM clause for updating values across tables: 
+
+```
+UPDATE table
+SET column = table_b.column
+FROM table_b
+WHERE table.column = table_b.column; 
+```
+
+* When you execute an UPDATE statement, PostgreSQL returns a message stating UPDATE along with the number of rows affected.
+
+---
+## Inspecting and modifying data
+### Creating backup tables 
+
+* Backing up a table (create an identical table):
+
+```{sql connection=con}
+CREATE TABLE meat_poultry_egg_inspect_backup 
+AS (SELECT * 
+    FROM meat_poultry_egg_inspect);
+```
+
+* Check number of records:
+
+```{sql connection=con, output.var="mp_back_check" }
+SELECT 
+    (SELECT count(*) FROM meat_poultry_egg_inspect) AS original,
+    (SELECT count(*) FROM meat_poultry_egg_inspect_backup) AS backup;
+```
+
+--
+```{r echo=FALSE}
+knitr::kable(mp_back_check, format = 'html')
+```
+
+---
+## Inspecting and modifying data
+### Creating backup tables 
+
+* Indexes are not copied when creating a table backup using the CREATE TABLE statement. 
+
+* If you decide to run queries on the backup, be sure to create a separate index on that table.
+
+---
+## Inspecting and modifying data
+### Creating a column copy
+
+
+* Creating and filling the st_copy column with ALTER TABLE and UPDATE
+
+```{sql connection=con}
+-- add a new column st_copy
+ALTER TABLE meat_poultry_egg_inspect ADD COLUMN st_copy varchar(2);
+```
+
+```{sql connection=con }
+-- fill the new column with st
+UPDATE meat_poultry_egg_inspect
+SET st_copy = st;
+```
+* Checking values in the st and st_copy columns
+
+```{sql connection=con, output.var="mp_st_copy" }
+SELECT st,
+       st_copy
+FROM meat_poultry_egg_inspect
+ORDER BY st;
+```
+
+---
+class: center, middle
+
+```{r echo=FALSE}
+knitr::kable(head(mp_st_copy), format = 'html')
+```
+
+---
+## Inspecting and modifying data
+### Updating rows where values are missing
+
+* Atlas Inspection is located in Minnesota; Hall-Namie Packing is in Alabama; and Jones Dairy is in Wisconsin:
+ 
+```{sql connection=con }
+UPDATE meat_poultry_egg_inspect
+SET st = 'MN'
+WHERE est_number = 'V18677A';
+
+```
+
+---
+
+## Inspecting and modifying data
+### Updating rows where values are missing
+
+```{sql connection=con }
+
+UPDATE meat_poultry_egg_inspect
+SET st = 'AL'
+WHERE est_number = 'M45319+P45319';
+
+
+```
+
+```{sql connection=con }
+
+UPDATE meat_poultry_egg_inspect
+SET st = 'WI'
+WHERE est_number = 'M263A+P263A+V263A';
+```
+
+
+
+
+---
+## Inspecting and modifying data
+### Updating rows where values are missing
+
+
+* If something goes wrong, we could restore the original st column values:
+
+A) Restoring from the column backup
+ 
+``` 
+UPDATE meat_poultry_egg_inspect
+SET st = st_copy;
+```
+
+B) Restoring from the table backup
+
+
+```
+UPDATE meat_poultry_egg_inspect original
+SET st = backup.st
+FROM meat_poultry_egg_inspect_backup backup
+WHERE original.est_number = backup.est_number; 
+```
+---
+## Inspecting and modifying data
+### Updating values for consistency 
+
+* In our data, we have the following spelling variations:
+
+```
+Armour - Eckrich Meats, LLC
+Armour-Eckrich Meats LLC
+Armour-Eckrich Meats, Inc.
+Armour-Eckrich Meats, LLC
+```
+
+* We use UPDATE to standardize the spelling
+
+* However, we do not alter the original column but first create a new one, which we name `company_standard`
+
+---
+## Inspecting and modifying data
+### Updating values for consistency 
+
+* Creating and filling the company_standard column:
+
+```{sql connection=con }
+ALTER TABLE meat_poultry_egg_inspect ADD COLUMN company_standard varchar(100);
+```
+
+```{sql connection=con }
+UPDATE meat_poultry_egg_inspect
+SET company_standard = company;
+```
+
+---
+## Inspecting and modifying data
+### Updating values for consistency 
+
+
+* Let's standardize any name with "Armour" to "Armour-Eckrich Meats"
+
+* Use UPDATE to modify field values that match a string
+
+```{sql connection=con }
+UPDATE meat_poultry_egg_inspect
+SET company_standard = 'Armour-Eckrich Meats'
+WHERE company LIKE 'Armour%';
+```
+
+---
+## Inspecting and modifying data
+### Concatenation
+
+* Now we come back to the issue with the column ZIP (missing zeros at the beginning)
+
+* Creating and filling the zip_copy column:
+
+```{sql connection=con }
+ALTER TABLE meat_poultry_egg_inspect ADD COLUMN zip_copy varchar(5);
+```
+
+```{sql connection=con }
+UPDATE meat_poultry_egg_inspect
+SET zip_copy = zip;
+```
+
+
+---
+## Inspecting and modifying data
+### Concatenation
+
+
+* Modify codes in the zip column missing two leading zeros for Puerto Rico (PR) and the Virgin Islands (VI): 
+
+```{sql connection=con }
+UPDATE meat_poultry_egg_inspect
+SET zip = '00' || zip
+WHERE st IN('PR','VI') AND length(zip) = 3;
+```
+
+* The double-pipe string operator (||) performs concatenation.
+
+???
+* We use SET to set the zip column to a value that is the result of the concatenation of the string 00 and the existing content of the zip column. 
+
+* We limit the UPDATE to only those rows where the st column has the state codes PR and VI using the IN comparison operator and add a test for rows where the length of zip is 3. 
+
+This entire statement will then only update the zip values for Puerto Rico and the Virgin Islands. Run the query; PostgreSQL should return the message UPDATE 86, which is the number of rows we expect to change based on our earlier count in Listing 9-6.
+
+
+---
+## Inspecting and modifying data
+### Concatenation
+
+* Modify codes in the zip column missing one leading zero
+
+```{sql connection=con }
+UPDATE meat_poultry_egg_inspect
+SET zip = '0' || zip
+WHERE st IN('CT','MA','ME','NH','NJ','RI','VT') AND length(zip) = 4;
+```
+
+---
+## Inspecting and modifying data
+### Concatenation
+
+* Using length() and count() to test the zip column
+
+```{sql connection=con, output.var="mp_zip_2" }
+SELECT length(zip),
+       count(*) AS length_count
+FROM meat_poultry_egg_inspect
+GROUP BY length(zip)
+ORDER BY length(zip) ASC;
+```
+
+---
+## Inspecting and modifying data
+### Concatenation
+
+* Before concatenation
+
+```{r echo=FALSE}
+knitr::kable(mp_zip, format = 'html')
+```
+
+--
+
+* After concatenation
+
+
+```{r echo=FALSE}
+knitr::kable(mp_zip_2, format = 'html')
+```
+
+
+---
+## Inspecting and modifying data
+### Updating values across tables
+
+* Let’s say we’re setting an inspection date for each of the companies in our table. 
+
+* We want to do this by U.S. regions, such as Northeast, Pacific, and so on, but those regional designations don’t exist in our table.
+
+* However, they do exist in a data set we can add to our database that also contains matching st state codes. 
+
+* This means we can use that other data as part of our UPDATE statement to provide the necessary information. 
+
+---
+## Inspecting and modifying data
+### Updating values across tables
+
+*Let’s begin with the New England region to see how this works.
+
+Creating and filling a state_regions table:
+
+```{sql connection=con }
+CREATE TABLE state_regions (
+    st varchar(2) CONSTRAINT st_key PRIMARY KEY,
+    region varchar(20) NOT NULL
+);
+```
+
+???
+We’ll create two columns in a state_regions table: one containing the two-character state code st and the other containing the region name. We set the primary key constraint to the st column, which holds a unique st_key value to identify each state. In the data you’re importing, each state is present and assigned to a U.S. Census region, and territories outside the United States are labeled as outlying areas. We’ll update the table one region at a time.
+
+---
+## Inspecting and modifying data
+### Updating values across tables
+
+* Add a column for inspection dates, and then fill in that column with the New England states.
+
+```{sql connection=con }
+COPY state_regions
+FROM '/tmp/state_regions.csv'
+WITH (FORMAT CSV, HEADER, DELIMITER ',');
+```
+
+---
+## Inspecting and modifying data
+### Updating values across tables
+
+* Adding and updating an inspection_date column
+
+```{sql connection=con }
+ALTER TABLE meat_poultry_egg_inspect ADD COLUMN inspection_date date;
+```
+
+```{sql connection=con }
+UPDATE meat_poultry_egg_inspect AS inspect
+SET inspection_date = '2019-12-01'
+WHERE EXISTS (SELECT state_regions.region
+              FROM   state_regions
+              WHERE  inspect.st = state_regions.st 
+              AND    state_regions.region = 'New England');
+```
+
+???
+The ALTER TABLE statement creates the inspection_date column in the meat_poultry_egg_inspect table. In the UPDATE statement, we start by naming the table using an alias of inspect to make the code easier to read 
+
+➊. Next, the SET clause assigns a date value of 2019-12-01 to the new inspection_date column 
+
+➋. Finally, the WHERE EXISTS clause includes a subquery that connects the meat_poultry_egg_inspect table to the state_regions table we created in Listing 9-18 and specifies which rows to update 
+
+➌. The subquery (in parentheses, beginning with SELECT) looks for rows in the state_regions table where the region column matches the string New England. At the same time, it joins the meat_poultry_egg_inspect table with the state_regions table using the st column from both tables. In effect, the query is telling the database to find all the st codes that correspond to the New England region and use those codes to filter the update.
+
+---
+## Inspecting and modifying data
+### Updating values across tables
+
+* Viewing updated inspection_date values
+
+```{sql connection=con, output.var="mp_st_insp" }
+SELECT st, inspection_date
+FROM meat_poultry_egg_inspect
+GROUP BY st, inspection_date
+ORDER BY st;
+```
+
+---
+class: center, middle
+
+```{r, echo=FALSE}
+DT::datatable(
+  head(mp_st_insp, 20),
+  fillContainer = FALSE, options = list(pageLength = 8)
+)
+```
+
+---
+## Inspecting and modifying data
+### Deleting data
+
+* DELETE FROM: Deleting all rows from a table
+
+```
+DELETE FROM table_name;
+```
+
+* Alternatively, you can drop the entire table from the databse
+
+```
+DROP TABLE table_name;
+```
+
+* Delete matching cases:
+
+```
+DELETE FROM table_name
+WHERE expression;
+```
+---
+## Inspecting and modifying data
+### Deleting data
+
+* Delete rows matching an expression
+
+```
+DELETE FROM meat_poultry_egg_inspect
+WHERE st IN('PR','VI');
+```
+---
+## Inspecting and modifying data
+### Deleting data
+
+* DROP COLUMN: Delete columns
+
+* Remove a column from a table using DROP
+
+```
+ALTER TABLE meat_poultry_egg_inspect DROP COLUMN zip_copy;
+```
+
+* Remove a table from a database using DROP
+
+```
+DROP TABLE meat_poultry_egg_inspect_backup;
+```
+---
+## Inspecting and modifying data
+### Transaction blocks
+
+
+* The essential point of a transaction is that it bundles multiple steps into a single, all-or-nothing operation. 
+
+* The intermediate states between the steps are not visible to other concurrent transactions.
+
+* If some failure occurs that prevents the transaction from completing, then none of the steps affect the database at all.
+
+
+Source: [PostgreSQL](https://www.postgresql.org/docs/current/tutorial-transactions.html)
+
+---
+## Inspecting and modifying data
+### Transaction blocks
+
+* START TRANSACTION signals the start of the transaction block. 
+
+* In PostgreSQL, you can also use the non-ANSI SQL BEGIN keyword. 
+
+* COMMIT signals the end of the block and saves all changes. 
+
+* ROLLBACK signals the end of the block and reverts all changes.
+
+
+> When you start a transaction, any changes you make to the data aren’t visible to other database users until you execute COMMIT
+
+---
+## Inspecting and modifying data
+### Transaction blocks
+
+* We can apply this transaction block technique to review changes a query makes and then decide whether to keep or discard them.
+
+* let’s say we’re cleaning dirty data related to the company AGRO Merchants Oakland LLC.
+
+```
+AGRO Merchants Oakland LLC
+AGRO Merchants Oakland LLC
+AGRO Merchants Oakland, LLC 
+```
+
+* We want the name to be consistent, so we’ll remove the comma from the third row using an UPDATE query, as we did earlier. 
+
+* But this time we’ll check the result of our update before we make it final (and we’ll purposely make a mistake we want to discard).
+
+---
+
+### Transaction block demo
+
+* Demonstrating a transaction block
+
+* START TRANSACTION
+
+```{sql connection=con }
+START TRANSACTION;
+```
+
+* UPDATE TABLE (with error in spelling)
+
+```{sql connection=con }
+UPDATE meat_poultry_egg_inspect
+SET company = 'AGRO Merchantss Oakland LLC'
+WHERE company = 'AGRO Merchants Oakland, LLC';
+```
+
+---
+
+### Transaction block demo
+
+* Show result
+
+```{sql connection=con, output.var="mp_trans" }
+-- view changes
+SELECT company
+FROM meat_poultry_egg_inspect
+WHERE company LIKE 'AGRO%'
+ORDER BY company;
+```
+
+--
+
+```{r, echo=FALSE}
+DT::datatable(
+  head(mp_trans, 5),
+  fillContainer = FALSE, options = list(pageLength = 8)
+)
+```
+
+---
+
+### Transaction block demo
+
+
+* Revert changes with ROLLBACK
+
+```{sql connection=con }
+ROLLBACK;
+```
+
+* Show result
+
+```{sql connection=con, output.var="mp_trans_2"}
+-- view changes
+SELECT company
+FROM meat_poultry_egg_inspect
+WHERE company LIKE 'AGRO%'
+ORDER BY company;
+```
+
+--
+
+```{r, echo=FALSE}
+DT::datatable(
+  head(mp_trans_2, 400),
+  fillContainer = FALSE, options = list(pageLength = 8)
+)
+```
+
+???
+We’ll run each statement separately, beginning with START TRANSACTION; ➊. The database responds with the message START TRANSACTION, letting you know that any succeeding changes you make to data will not be made permanent unless you issue a COMMIT command. Next, we run the UPDATE statement, which changes the company name in the row where it has an extra comma. I intentionally added an extra s in the name used in the SET clause ➋ to introduce a mistake. When we view the names of companies starting with the letters AGRO using the SELECT statement ➌, we see that, oops, one company name is misspelled now:
+company
+
+```
+AGRO Merchants Oakland LLC
+AGRO Merchants Oakland LLC
+AGRO Merchantss Oakland LLC 
+```
+
+Instead of rerunning the UPDATE statement to fix the typo, we can simply discard the change by running the ROLLBACK; ➍ command. When we rerun the SELECT statement to view the company names, we’re back to where we started:
+
+AGRO Merchants Oakland LLC
+AGRO Merchants Oakland LLC
+AGRO Merchants Oakland, LLC 
+
+From here, you could correct your UPDATE statement by removing the extra s and rerun it, beginning with the START TRANSACTION statement again. If you’re happy with the changes, run COMMIT; to make them permanent.
+---
+
+class: center, middle
+
+## Thank you!
+
+```{sql connection=con, include=FALSE}
+DROP TABLE meat_poultry_egg_inspect;
+```
+
+
+```{sql connection=con, include=FALSE}
+DROP TABLE state_regions;
+```
+
+
+```{sql connection=con, include=FALSE}
+DROP TABLE meat_poultry_egg_inspect_backup;
+```
+
+
+```{r include = FALSE}
+dbDisconnect(con)
+
+```
+
+
+[Prof. Dr. Jan Kirenz](https://www.kirenz.com)  
+
+HdM Stuttgart  
+Nobelstraße 10  
+70569 Stuttgart
+
+![](https://upload.wikimedia.org/wikipedia/commons/5/5e/HdM_Logo.svg)

@@ -1,0 +1,398 @@
+---
+title: "sql_basic_math_stat"
+author: "Kirenz"
+date: "9/3/2019"
+output: html_document
+---
+
+```{r}
+library(RPostgreSQL)
+
+drv <- dbDriver("PostgreSQL")
+
+pw = ""
+
+con <- dbConnect(drv, dbname = "postgres",
+                 host = "localhost", port = 5433,
+                 user = "postgres", password = pw)
+
+```
+
+# Math Operators
+
+## Basic Addition, subtraction, and multiplication 
+
+```{sql connection=con}
+SELECT 2 + 2;    -- addition
+```
+
+
+```{sql connection=con}
+SELECT 9 - 1;    -- subtraction
+```
+
+```{sql connection=con}
+SELECT 3 * 4;    -- multiplication
+```
+
+## Integer and decimal division 
+
+* / returns the quotient only, no remainder
+* Division of one integer by another yields only the integer quotient
+```{sql connection=con}
+SELECT 11 / 6;   -- integer division
+```
+
+* If xou want to see the remainder as an integer, you must perform the same calculation using the modulo operator %
+* This statement returns just the remainder
+* No single operation will provide you with both the quotient and the remainder as integers
+```{sql connection=con}
+SELECT 11 % 6;   -- modulo division
+```
+
+
+* The two following codes return the result as a numeric type
+
+* If one or both of the numbers is a numeric, the result will by default be a numeric
+```{sql connection=con}
+SELECT 11.0 / 6; -- decimal division
+```
+
+* If you're working with data stored only as integers and need to froce decimal division, you can CAST one of the integers to a numeric type
+```{sql connection=con}
+SELECT CAST(11 AS numeric(3,1)) / 6;
+```
+
+
+## Exponents and Roots
+
+* The exponentiation operator allows you to raise a given base number to an exponent
+```{sql connection=con}
+SELECT 3 ^ 4;    -- exponentiation
+```
+
+* The square root of number can be found using the |/ operator or the sqrt(n)-function
+* Both are prefix operators, named because they come before a single value
+```{sql connection=con}
+SELECT |/ 10;    -- square root (operator)
+```
+
+```{sql connection=con}
+SELECT sqrt(10); -- square root (function)
+```
+
+## Doing Math across Census Table Columns
+
+* Importing us_counties-2010 table
+
+* CREATE TABLE statement for Census county data:
+```{sql connection=con}
+CREATE TABLE us_counties_2010 (
+    geo_name varchar(90),                    -- Name of the geography
+    state_us_abbreviation varchar(2),        -- State/U.S. abbreviation
+    summary_level varchar(3),                -- Summary Level
+    region smallint,                         -- Region
+    division smallint,                       -- Division
+    state_fips varchar(2),                   -- State FIPS code
+    county_fips varchar(3),                  -- County code
+    area_land bigint,                        -- Area (Land) in square meters
+    area_water bigint,                        -- Area (Water) in square meters
+    population_count_100_percent integer,    -- Population count (100%)
+    housing_unit_count_100_percent integer,  -- Housing Unit count (100%)
+    internal_point_lat numeric(10,7),        -- Internal point (latitude)
+    internal_point_lon numeric(10,7),        -- Internal point (longitude)
+
+    -- This section is referred to as P1. Race:
+    p0010001 integer,   -- Total population
+    p0010002 integer,   -- Population of one race:
+    p0010003 integer,       -- White Alone
+    p0010004 integer,       -- Black or African American alone
+    p0010005 integer,       -- American Indian and Alaska Native alone
+    p0010006 integer,       -- Asian alone
+    p0010007 integer,       -- Native Hawaiian and Other Pacific Islander alone
+    p0010008 integer,       -- Some Other Race alone
+    p0010009 integer,   -- Population of two or more races
+    p0010010 integer,   -- Population of two races:
+    p0010011 integer,       -- White; Black or African American
+    p0010012 integer,       -- White; American Indian and Alaska Native
+    p0010013 integer,       -- White; Asian
+    p0010014 integer,       -- White; Native Hawaiian and Other Pacific Islander
+    p0010015 integer,       -- White; Some Other Race
+    p0010016 integer,       -- Black or African American; American Indian and Alaska Native
+    p0010017 integer,       -- Black or African American; Asian
+    p0010018 integer,       -- Black or African American; Native Hawaiian and Other Pacific Islander
+    p0010019 integer,       -- Black or African American; Some Other Race
+    p0010020 integer,       -- American Indian and Alaska Native; Asian
+    p0010021 integer,       -- American Indian and Alaska Native; Native Hawaiian and Other Pacific Islander
+    p0010022 integer,       -- American Indian and Alaska Native; Some Other Race
+    p0010023 integer,       -- Asian; Native Hawaiian and Other Pacific Islander
+    p0010024 integer,       -- Asian; Some Other Race
+    p0010025 integer,       -- Native Hawaiian and Other Pacific Islander; Some Other Race
+    p0010026 integer,   -- Population of three races
+    p0010047 integer,   -- Population of four races
+    p0010063 integer,   -- Population of five races
+    p0010070 integer,   -- Population of six races
+
+    -- This section is referred to as P2. HISPANIC OR LATINO, AND NOT HISPANIC OR LATINO BY RACE
+    p0020001 integer,   -- Total
+    p0020002 integer,   -- Hispanic or Latino
+    p0020003 integer,   -- Not Hispanic or Latino:
+    p0020004 integer,   -- Population of one race:
+    p0020005 integer,       -- White Alone
+    p0020006 integer,       -- Black or African American alone
+    p0020007 integer,       -- American Indian and Alaska Native alone
+    p0020008 integer,       -- Asian alone
+    p0020009 integer,       -- Native Hawaiian and Other Pacific Islander alone
+    p0020010 integer,       -- Some Other Race alone
+    p0020011 integer,   -- Two or More Races
+    p0020012 integer,   -- Population of two races
+    p0020028 integer,   -- Population of three races
+    p0020049 integer,   -- Population of four races
+    p0020065 integer,   -- Population of five races
+    p0020072 integer,   -- Population of six races
+
+    -- This section is referred to as P3. RACE FOR THE POPULATION 18 YEARS AND OVER
+    p0030001 integer,   -- Total
+    p0030002 integer,   -- Population of one race:
+    p0030003 integer,       -- White alone
+    p0030004 integer,       -- Black or African American alone
+    p0030005 integer,       -- American Indian and Alaska Native alone
+    p0030006 integer,       -- Asian alone
+    p0030007 integer,       -- Native Hawaiian and Other Pacific Islander alone
+    p0030008 integer,       -- Some Other Race alone
+    p0030009 integer,   -- Two or More Races
+    p0030010 integer,   -- Population of two races
+    p0030026 integer,   -- Population of three races
+    p0030047 integer,   -- Population of four races
+    p0030063 integer,   -- Population of five races
+    p0030070 integer,   -- Population of six races
+
+    -- This section is referred to as P4. HISPANIC OR LATINO, AND NOT HISPANIC OR LATINO BY RACE
+    -- FOR THE POPULATION 18 YEARS AND OVER
+    p0040001 integer,   -- Total
+    p0040002 integer,   -- Hispanic or Latino
+    p0040003 integer,   -- Not Hispanic or Latino:
+    p0040004 integer,   -- Population of one race:
+    p0040005 integer,   -- White alone
+    p0040006 integer,   -- Black or African American alone
+    p0040007 integer,   -- American Indian and Alaska Native alone
+    p0040008 integer,   -- Asian alone
+    p0040009 integer,   -- Native Hawaiian and Other Pacific Islander alone
+    p0040010 integer,   -- Some Other Race alone
+    p0040011 integer,   -- Two or More Races
+    p0040012 integer,   -- Population of two races
+    p0040028 integer,   -- Population of three races
+    p0040049 integer,   -- Population of four races
+    p0040065 integer,   -- Population of five races
+    p0040072 integer,   -- Population of six races
+
+    -- This section is referred to as H1. OCCUPANCY STATUS
+    h0010001 integer,   -- Total housing units
+    h0010002 integer,   -- Occupied
+    h0010003 integer    -- Vacant
+);
+
+```
+
+*  Importing Census data using COPY
+```{sql connection=con}
+COPY us_counties_2010
+FROM '/Users/jankirenz/Downloads/us_counties_2010.csv'
+WITH (FORMAT CSV, HEADER);
+```
+
+* Checking Data
+```{sql connection=con}
+SELECT * 
+FROM us_counties_2010
+ORDER BY GEO_NAME;
+```
+
+* Selecting Census population columns by race with aliases
+
+* With AS we give the population columns a more readable name: 
+```{sql connection=con}
+SELECT geo_name,
+       state_us_abbreviation AS "st",
+       p0010001 AS "Total Population",
+       p0010003 AS "White Alone",
+       p0010004 AS "Black or African American Alone",
+       p0010005 AS "Am Indian/Alaska Native Alone",
+       p0010006 AS "Asian Alone",
+       p0010007 AS "Native Hawaiian and Other Pacific Islander Alone",
+       p0010008 AS "Some Other Race Alone",
+       p0010009 AS "Two or More Races"
+FROM us_counties_2010;
+```
+
+## Adding and Subtracting Columns
+
+* Now, we're going to try a simple calculation on two of the race columns by adding people who identified as white alone or black alone in each county: 
+
+```{sql connection=con}
+SELECT geo_name,
+       state_us_abbreviation AS "st",
+       p0010003 AS "White Alone",
+       p0010004 AS "Black Alone",
+       p0010003 + p0010004 AS "Total White and Black"
+FROM us_counties_2010;
+```
+
+* Let's test our data and validate that we imported columns correctly
+
+* The 6 race-"Alone"-columns plus the "Two or more Races"-column should add up to the same number as the total population: 
+
+* The query includes the population total (p0010001) followed by a calculation adding the seven race columns as All Races
+* The population total (p0010001) and the races total (All Races) should be identical, but rather than manually check, we add a column (Difference) that subtracts the population total column from the total of the race column
+* The column Difference should display a zero in each row if all the data is in the right place. 
+* To avoid checking all 3143 rows, we add an ORDER BY clause on Difference, so any rows showing a difference should appear at the top of our query
+```{sql connection=con}
+SELECT geo_name,
+       state_us_abbreviation AS "st",
+       p0010001 AS "Total",
+       p0010003 + p0010004 + p0010005 + p0010006 + p0010007
+           + p0010008 + p0010009 AS "All Races",
+       (p0010003 + p0010004 + p0010005 + p0010006 + p0010007
+           + p0010008 + p0010009) - p0010001 AS "Difference"
+FROM us_counties_2010
+ORDER BY "Difference" DESC;
+```
+
+## Finding Percentages of the Whole
+
+* Now, let's dig deeper into the data to find meaningful differences in the population demographics of the counties
+
+* One way to do this, is to calculate what percentage of the whole a particular variable represents
+
+* The code below calculates for each county the percentage of the population that reported their race as Asian: 
+* By using CAST on one of the integers, we force decimal division and ensure that we get the fractional result we need
+* We divide p0010006 (Asian alone) by p0010001 (total population) and multiply that part with 100 to present the result as a fraction of 100
+* With ORDER BY the new column we sort from highest to lowest percentage
+```{sql connection=con}
+SELECT geo_name,
+       state_us_abbreviation AS "st",
+       (CAST(p0010006 AS numeric(8,1)) / p0010001) * 100 AS "pct_asian"
+FROM us_counties_2010
+ORDER BY "pct_asian" DESC;
+
+```
+
+## Checking Percent Change
+
+* Percent change calculations are often employed when analyzing change over time, and they're particularly useful for comparing change among similar items
+
+* Percent change is calculated like this: (new number - old number) / old number
+
+* We'll try this with a small collection of test data related to spending in departments of a hypothetical local government
+
+```{sql connection=con}
+CREATE TABLE percent_change (
+    department varchar(20),
+    spend_2014 numeric(10,2),
+    spend_2017 numeric(10,2)
+);
+```
+
+```{sql connection=con}
+INSERT INTO percent_change
+VALUES
+    ('Building', 250000, 289000),
+    ('Assessor', 178556, 179500),
+    ('Library', 87777, 90001),
+    ('Clerk', 451980, 650000),
+    ('Police', 250000, 223000),
+    ('Recreation', 199000, 195000);
+
+```
+
+
+* The percent change (pct_change) formula subtracts spend_2014 from spend_2017 and then divides by spend_2014. We multiply by 100 to express the result as a portion of 100. 
+* To simplify the output, we add a ROUND function to remove all but one decimal place. The ROUND function takes two arguments: the column or expression to be rounded, and the number of decimal places to display (,1): 
+```{sql connection=con}
+SELECT department,
+       spend_2014,
+       spend_2017,
+       round( (spend_2017 - spend_2014) /
+                    spend_2014 * 100, 1 ) AS "pct_change"
+FROM percent_change;
+```
+
+# Aggregate Functions for Averages and Sums
+
+* Two of the most common aggregate functions in data analysis are AVG and SUM
+
+* Now, we want to calculate the total population of all counties plus the average population of all counties and we use ROUND to display only one decimal place: 
+```{sql connection=con}
+SELECT SUM(p0010001) AS "County Sum",
+       ROUND(AVG(p0010001), 0) AS "County Average"
+FROM us_counties_2010;
+```
+
+# Finding the Median 
+
+* Median is the "middle" value in an ordered set of values
+
+* Average is the sum of all values divided by the number of values
+
+## Finding the Median with Percentile Functions
+
+* PostgreSQL does not have a built-in MEDIAN function, but we can use a SQL PERCENTILE function to find the median as well as other quantiles or cut points, which are the points that divide a group of numbers into equal sizes
+
+* In statistics, percentiles indicate the point an an ordered set of data below which a certain percentage of the data is found
+
+For example: A doctor might tell you that your weight places you in the 60th percentile for an adult in your age group. That means 60 percent of people are your weight or less. 
+
+* The Median is equivalent to the 50th percentile (half the values are below and half above). 
+
+* The percentile_cont(n) function calculates percentiles as continous values (the result does not have to be one of the numbers in the data set but can be a decimal value between two of the numbers). 
+
+* The percentile_disc returns only discrete values. The result returned will be rounded to one of the numbers in the set. 
+
+* This code makes this distinction clear: 
+
+```{sql connection=con}
+CREATE TABLE percentile_test (
+    numbers integer
+);
+```
+
+```{sql connection=con}
+INSERT INTO percentile_test (numbers) VALUES
+    (1), (2), (3), (4), (5), (6);
+
+```
+
+```{sql connection=con}
+SELECT
+    percentile_cont(.5)
+    WITHIN GROUP (ORDER BY numbers),
+    percentile_disc(.5)
+    WITHIN GROUP (ORDER BY numbers)
+FROM percentile_test;
+```
+
+* Percentile_cont returned what we'd expect the median to be: 3.5
+* But because percentile_disc calculates discrete values, it reports 3, the last value in the 50 percent of the numbers
+
+## Median and Percentiles with Census Data
+
+* Using SUM, AVG, and PERCENTILE_CONT 
+```{sql connection=con}
+SELECT SUM(p0010001) AS "County Sum",
+       ROUND(AVG(p0010001), 0) AS "County Average",
+       percentile_cont(.5)
+       WITHIN GROUP (ORDER BY p0010001) AS "County Median"
+FROM us_counties_2010;
+```
+
+* The median and average are far apart, which shows that averages can mislead
+
+# Finding the MODE
+
+* Mode is the value that appears most often
+
+```{sql connection=con}
+SELECT mode() WITHIN GROUP (ORDER BY p0010001)
+FROM us_counties_2010;
+```
+

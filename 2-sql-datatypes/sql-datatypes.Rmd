@@ -1,0 +1,867 @@
+---
+title: "Einführung in SQL"
+subtitle: "Datentypen"
+author: "Prof. Dr. Jan Kirenz"
+institute: "HdM Stuttgart"
+output:
+  xaringan::moon_reader:
+    css: ["footer-header.css", "default", "default-fonts"]
+    lib_dir: libs
+    nature:
+      titleSlideClass: [center, middle]
+      highlightLines: true
+      highlightStyle: github
+      countIncrementalSlides: false
+---
+layout: true
+  
+<div class="my-footer"><span> Einführung in SQL | Prof. Dr. Jan Kirenz </span></div> 
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(connection = "con")
+```
+
+
+
+---
+
+# Setup
+
+### Verbindung zu Datenbank herstellen
+
+```{r, include=FALSE}
+pw = ""
+```
+
+* Das Passwort `pw` muss zuvor als Objekt gespeichert werden:
+
+```
+pw = "platzhalter_für_eigenes_passwort"
+```
+
+```{r, eval=TRUE}
+library(DBI)
+library(RPostgres)
+
+con <- dbConnect(RPostgres::Postgres(),
+                 dbname = "postgres",
+                  host = "localhost", 
+                  port = 5432,
+                  user = "postgres", 
+                  password = pw)
+```
+
+* Die in dieser Präsentation verwendeten Beispiele basieren auf dem Buch "A Beginner's Guide to Storytelling with Data" von Anthony DeBarros (2018). 
+
+
+
+---
+
+# Datentypen
+
+* Bei der Erstellung von neuen Tabellen muss jeweils der Datentyp angegeben werden. 
+
+* Der Datentyp wird immer nach der Bezeichnung einer Spalte definiert. Hier ein Beispiel:
+
+```{sql connection=con}
+CREATE TABLE eagle_watch (
+    observed_date date,
+    eagles_seen integer
+);
+```
+
+* **Characters**: Jeder Buchstabe oder Symbole
+* **Numbers**: ganze Zahlen und Brüche
+* **Dates and Times**: Zeitbezogene Informationen
+
+---
+
+# Datentypen
+## Characters
+
+- **char(n)**: Eine Spalte bei welcher der Inhalt Zeichen mit einer fixen Länge n sind.
+
+- Eine Spalte die mit char(20) definiert ist, kann bis zu 20 Zeichen in einer Reihe speichern. 
+
+- Falls weniger als 20 Zeichen eingegeben werden, fügt PostgreSQL automatische Leerzeichen ein. 
+
+- Dieser Datentyp kann auch als `character(n)` definiert werden - dies ist die übliche Vorgehensweise.
+
+---
+# Datentypen
+## Characters
+
+* **varchar(n)**: Mit n wird die maximale Länge definiert. 
+
+- Wenn weniger eingegeben wird, wird der Inhalt nicht mit Leerzeichen aufgefüllt. `character varying (n)`
+
+---
+# Datentypen
+## Characters
+
+* **text**: keine Limitierung - maximal 1 GB. Dies ist nicht Teil des SQL-Standards, wird aber bspw. bei Microsoft SQL und MySQL genutzt.
+
+
+---
+
+# Datentypen
+## Characters
+
+* In PostgreSQL exisitert kein wesentlicher Unterschied zwischen den drei oben genannten Datentypen. 
+
+* Aufgrund der Effizienz und Flexibilität ist es in der Regel sinnvoll, __varchar__ oder __text__ zu nutzen. 
+
+* Eine Ausnahme stellen Eingaben dar, die immer eine bestimmte Länge aufweisen (wie bspw. PLZ).
+
+---
+
+# Datentypen
+
+* Schritt 1
+
+```{sql connection=con}
+CREATE TABLE char_data_types (
+    varchar_column varchar(10),
+    char_column char(10),
+    text_column text
+);
+```
+
+
+* Schritt 2
+
+```{sql connection=con}
+INSERT INTO char_data_types
+VALUES
+    ('abc', 'abc', 'abc'),
+    ('defghi', 'defghi','defghi');
+```
+
+
+* Schritt 3
+
+```{sql connection=con}
+COPY char_data_types TO '/tmp/typetest.txt'
+WITH (FORMAT CSV, HEADER, DELIMITER '|');
+```
+
+
+---
+
+# Datentypen
+
+## Zahlen (Numbers)
+
+Im Gegensatz zu Characters (dort können auch Zahlen abgespeichert werden) können mit numerischen Zahlen mathematische Operationen durchgeführt werden.  
+
+* **Integers**: Ganze Zahlen
+* **Fixed-point** und 
+* **floating-point**: 
+
+---
+
+# Datentypen
+
+### Integers
+
+* smallint: 2 bytes; integer: 4 bytes; bigint: 8 bytes 
+
+* Falls sehr große Datenwerte vorhanden sind (Datenformate größer als 2.1 Mrd), ist es  empfehlenswert, mit `bigint` als Standard zu arbeiten. 
+
+* Ansonsten ist `integer` eine gute Wahl. 
+
+* Falls eine größere Zahl eingegeben wird, erscheint der Hinweis `out of range`.
+
+---
+
+# Datentypen
+
+### Auto-incrementing integers
+
+Diese Typen sind Spezialfälle der unterschiedlichen Zahlentypen. Der Index beginnt jeweils bei 1 und erhöht sich inkremmentell. Hier ein Beispiel mit `serial`:
+
+- smallserial, 2 bytes, 1 bis 32767
+- serial, 4 bytes, 1 bis 2.147.483.647
+- bigserial, 8 bytes
+
+
+```{sql connection=con}
+CREATE TABLE people (
+    id serial,
+    person_name varchar(100) 
+);
+```
+
+???
+* Immer wenn eine neue Person zu der Tabelle hinzugefügt wird, erhöht sich der entsprechende Wert in der Spalte `id` um 1. Diese Funktion wird daher häufig genutzt, um einen einzigartigen Schlüssel (unique key) zu erzeugen. Bei diesem Vorgehen muss jedoch beachtete werden, dass eine gelöschte Zeile und der dazugehörige id-Wert nie ersetzt werden. Ebenso erhöht sich die `id` auch dann, wenn das Einfügen einer neuen Zeile abgebrochen wird.
+
+
+---
+
+# Datentypen
+### Dezimalzahlen
+#### Fixed-Point Numbers
+
+* `numeric(precision,scale)` (arbitrary-precision type)
+
+ * __Precision__ beschreibt die maximale Anzahl an Stellen links und rechts von dem Komma (US: decimal point). 
+
+ * __Scale__ beschreibt die maximale Anzahl an Stellen rechts von dem Komma (US: right of the decimal point).
+
+---
+
+# Datentypen
+### Dezimalzahlen
+#### Fixed-Point Numbers
+
+
+* `Decimal(precision,scale)`
+
+* Alternativ zu numeric kann auch decimal genutzt werden. 
+
+* Beide sind Teil des ANSI SQL Standards. 
+
+* Falls der **Scale** Wert nicht definiert wird, wird dieser automatisch auf 0 gesetzt (d.h. er wird zu einem integer). 
+
+* Falls **Precision** und **Scale** nicht definiert werden, wird die höchst mögliche Anzahl genutzt. 
+
+---
+
+# Datentypen
+
+### Floating-Point Types
+
+* Dieser Typ wird auch **variable-precision-type** genannt. 
+
+* Die Datenbank speichert dabei die Zahl als Nummer und einen Exponenten, der angibt, an welcher Stelle sich der Dezimalpunkt befindet. 
+
+* Es muss dabei kein `precision` und `scale` angegeben werden.
+
+ * **real**, insgesamt 6 Zahlen vor und nach dem Komma.
+ * **double precision**, insgesamt 15 Zahlen vor und nach dem Komma.
+
+* Der Unterschied der beiden besteht also darin, wieviel Daten sie speichern können. 
+
+---
+
+# Datentypen
+### Vergleich der numerischen Typen
+
+* Wir erzeugen eine Tabelle um die unterschiedlichen Formate zu vergleichen:
+
+```{sql connection=con}
+CREATE TABLE number_data_types (
+    numeric_column numeric(20,5),
+    real_column real,
+    double_column double precision
+);
+```
+
+---
+
+# Datentypen
+
+```{sql connection=con}
+INSERT INTO number_data_types
+VALUES
+    (.7, .7, .7),
+    (2.13579, 2.13579, 2.13579),
+    (2.1357987654, 2.1357987654, 2.1357987654);
+```
+
+---
+
+# Datentypen
+
+
+```{sql connection=con, output.var="nr_all"}
+SELECT * 
+FROM number_data_types;
+```
+
+--
+
+* Ausgabe einer standard SQL-Abfrage (bspw. mit pgAdmin)
+
+
+| numeric_column  |real_column   | double_column   
+|---|---|---|---|---|
+|0.70000    |0.7   |0.7   
+|2.13579   |2.13579    |2.13579   
+|2.13580    |2.1358   | 2.1357987654  
+
+
+--
+* Ausgabe des R-SQL-Pakets (darin exisiteren nur numeric Werte)
+
+```{r echo=FALSE}
+knitr::kable(nr_all, format = 'html')
+```
+
+
+---
+
+# Datentypen
+
+```{sql connection=con, output.var="nr_as"}
+SELECT
+    numeric_column * 10000000 AS "Fixed",
+    real_column * 10000000 AS "Float"
+FROM number_data_types
+WHERE numeric_column = .7;
+```
+
+--
+
+* Ausgabe einer standard SQL-Abfrage (bspw. mit pgAdmin)
+
+
+|Fixed   | Float
+|---|---|
+| 7000000.00000 | 6999999.88079071
+
+* Aus diesem Grund werden "Floating-Types" als nicht exakt bezeichnet
+
+--
+
+* Ausgabe des R-SQL-Pakets
+
+```{r echo=FALSE}
+knitr::kable(nr_as, format = 'html')
+```
+
+---
+
+# Datentypen
+
+## Datum und Uhrzeit
+
+* PostgeSQL unterstützt die wichtigsten Zeitfromen
+
+* __timestamp__ speichert Datum und Zeit 
+
+* __date Records__  speichert nur das Datum. 
+
+* **time Records** nur die Uhrzeit. 
+
+???
+timeline. Typically, you’ll want to add the keywords with time zone to ensure that the time recorded for an event includes the time zone where it occurred. Otherwise, times recorded in various places around the globe become impossible to compare.
+
+interval Holds a value representing a unit of time expressed in the format quantity unit. It doesn’t record the start or end of a time period, only its length. Examples include 12 days or 8 hours. (The PostgreSQL documentation at https://www.postgresql.org/docs/current/static/datatype-datetime.html lists unit values ranging from microsecond to millennium.) You’ll typically use this type for calculations or filtering on other date and time columns.
+
+---
+
+# Datentypen
+
+```{sql connection=con}
+CREATE TABLE date_time_types (
+    timestamp_column timestamp with time zone,
+    interval_column interval
+);
+```
+
+
+```{sql connection=con}
+INSERT INTO date_time_types
+VALUES
+    ('2018-12-31 01:00 EST','2 days'),
+    ('2018-12-31 01:00 PST','1 month'),
+    ('2018-12-31 01:00 Australia/Melbourne','1 century'),
+    (now(),'1 week');
+```
+
+---
+
+# Datentypen
+
+```{sql connection=con, output.var="date_all"}
+SELECT * 
+FROM date_time_types;
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(date_all, format = 'html')
+```
+
+???
+PostgreSQL changed 1 century to 100 years and 1 week to 7 days because of its preferred default settings for interval display.
+
+---
+
+# Datentypen
+
+## Interval Data Type
+
+
+```{sql connection=con, output.var="date_interval"}
+SELECT
+    timestamp_column,
+    interval_column,
+    timestamp_column - interval_column AS new_date
+FROM date_time_types;
+```
+
+
+--
+
+```{r echo=FALSE}
+knitr::kable(date_interval, format = 'html')
+```
+
+
+
+???
+* Computed columns are called expressions; we’ll use this technique often.
+
+* example, let’s say you have a column that holds the date a client signed a contract. Using interval data, you can add 90 days to each contract date to determine when to follow up with the client.
+
+
+---
+
+## Datentransformationen mit CAST()
+
+* Die CAST-Funktion kann nur angewendet werden, wenn die originären Werte in das gewünschte Format überführt werden können.
+
+* Beispielsweise können Zahlen als Text gespeichert werden, nicht jedoch Text als Zahlen.
+
+* Hier werden die ersten zehn Ziffern der Spalte in ein neues Format umgewandelt
+
+---
+
+## Datentransformationen mit CAST()
+
+```{sql connection=con, output.var="date_cast"}
+SELECT timestamp_column, 
+       CAST(timestamp_column AS varchar(10))
+FROM date_time_types;
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(date_cast, format = 'html')
+```
+
+---
+
+## Datentransformationen mit CAST()
+
+
+```{sql connection=con, output.var="nr_cast"}
+SELECT numeric_column,
+       CAST(numeric_column AS integer),
+       CAST(numeric_column AS varchar(6))
+FROM number_data_types;
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(nr_cast, format = 'html')
+```
+
+---
+## Datentransformationen mit CAST()
+
+### CAST Shortcut 
+
+* Der Befehl CAST kann (nur!) in PostgreSQL mit `::` abgekürzt werden
+
+```{sql connection=con, output.var="date_cast_postgre"}
+SELECT timestamp_column, CAST(timestamp_column AS varchar(10))
+FROM date_time_types;
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(date_cast_postgre, format = 'html')
+```
+
+---
+## Datentransformationen mit CAST()
+
+### CAST Shortcut 
+
+```{sql connection=con, output.var="date_cast_postgre2"}
+SELECT timestamp_column::varchar(10)
+FROM date_time_types;
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(date_cast_postgre2, format = 'html')
+```
+
+
+---
+
+# Datenimport und Datenexport
+
+* In PostgreSQL kann der Befehl COPY für das Einlesen und Exportieren verwendet werden
+
+* Überblick über [Datenkonvertierungen in PostgreSQL]( https://wiki.postgresql.org/wiki/Converting_from_other_Databases_to_PostgreSQL)
+
+* Vorgehensweise für den Import von Daten:
+
+1. Quelldaten als CSV bereitstellen 
+1. Eine Tabelle für die Datenspeicherung vorbereiten  
+1. Den COPY-Befehl für den Import der Daten schreiben
+
+* Beispiel einer CSV-Datei:
+
+```
+FIRSTNAME,LASTNAME,STREET,CITY,STATE,PHONE
+John,Doe,"123 Main St., Apartment 200",Hyde Park,NY,845-555-1212
+```
+
+???
+
+CSV 
+A delimited text file contains rows of data, and each row represents one row in a table. In each row, a character separates, or delimits, each data column. 
+
+I’ve seen all kinds of characters used as delimiters, from ampersands to pipes, but the comma is most commonly used; hence the name of a file type you’ll see often: comma-separated values (CSV). The terms CSV and comma-delimited are interchangeable.
+
+---
+
+# Datenimport und Datenexport
+
+### CSV Daten
+
+* Falls in den CSV-Daten Kommas verwendet werden, müssen die entsprechenden Werte in den Spalten mit Anführungszeichen versehen werden.
+
+```
+John,Doe,"123 Main St., Apartment 200",Hyde Park,NY,845-555-1212
+```
+
+
+---
+
+## Datenimport mit COPY
+
+* Beipsielhafter Syntax
+
+
+WINDOWS:
+
+
+```
+COPY table_name
+FROM 'C:\YourDirectory\your_file.csv'
+WITH (FORMAT CSV, HEADER);
+```
+
+MAC oder Linux
+
+```
+COPY table_name
+FROM 'Users/YourDirectory/your_file.csv'
+WITH (FORMAT CSV, HEADER);
+```
+
+
+---
+
+### Import von Daten am Beispiel von Zensusdaten (USA 2010) 
+
+
+* Für mehr Informationen zu den Daten, siehe das [Data dictionary](http://www.census.gov/prod/cen2010/doc/pl94-171.pdf)
+
+
+```{sql connection=con}
+CREATE TABLE us_counties_2010 (
+    geo_name varchar(90),                    -- Name of the geography
+    state_us_abbreviation varchar(2),        -- State/U.S. abbreviation
+    summary_level varchar(3),                -- Summary Level
+    region smallint,                         -- Region
+    division smallint,                       -- Division
+    state_fips varchar(2),                   -- State FIPS code
+    county_fips varchar(3),                  -- County code
+    area_land bigint,                        -- Area (Land) in square meters
+    area_water bigint,                        -- Area (Water) in square meters
+    population_count_100_percent integer,    -- Population count (100%)
+    housing_unit_count_100_percent integer,  -- Housing Unit count (100%)
+    internal_point_lat numeric(10,7),        -- Internal point (latitude)
+    internal_point_lon numeric(10,7),        -- Internal point (longitude)
+
+    -- This section is referred to as P1. Race:
+    p0010001 integer,   -- Total population
+    p0010002 integer,   -- Population of one race:
+    p0010003 integer,       -- White Alone
+    p0010004 integer,       -- Black or African American alone
+    p0010005 integer,       -- American Indian and Alaska Native alone
+    p0010006 integer,       -- Asian alone
+    p0010007 integer,       -- Native Hawaiian and Other Pacific Islander alone
+    p0010008 integer,       -- Some Other Race alone
+    p0010009 integer,   -- Population of two or more races
+    p0010010 integer,   -- Population of two races:
+    p0010011 integer,       -- White; Black or African American
+    p0010012 integer,       -- White; American Indian and Alaska Native
+    p0010013 integer,       -- White; Asian
+    p0010014 integer,       -- White; Native Hawaiian and Other Pacific Islander
+    p0010015 integer,       -- White; Some Other Race
+    p0010016 integer,       -- Black or African American; American Indian and Alaska Native
+    p0010017 integer,       -- Black or African American; Asian
+    p0010018 integer,       -- Black or African American; Native Hawaiian and Other Pacific Islander
+    p0010019 integer,       -- Black or African American; Some Other Race
+    p0010020 integer,       -- American Indian and Alaska Native; Asian
+    p0010021 integer,       -- American Indian and Alaska Native; Native Hawaiian and Other Pacific Islander
+    p0010022 integer,       -- American Indian and Alaska Native; Some Other Race
+    p0010023 integer,       -- Asian; Native Hawaiian and Other Pacific Islander
+    p0010024 integer,       -- Asian; Some Other Race
+    p0010025 integer,       -- Native Hawaiian and Other Pacific Islander; Some Other Race
+    p0010026 integer,   -- Population of three races
+    p0010047 integer,   -- Population of four races
+    p0010063 integer,   -- Population of five races
+    p0010070 integer,   -- Population of six races
+
+    -- This section is referred to as P2. HISPANIC OR LATINO, AND NOT HISPANIC OR LATINO BY RACE
+    p0020001 integer,   -- Total
+    p0020002 integer,   -- Hispanic or Latino
+    p0020003 integer,   -- Not Hispanic or Latino:
+    p0020004 integer,   -- Population of one race:
+    p0020005 integer,       -- White Alone
+    p0020006 integer,       -- Black or African American alone
+    p0020007 integer,       -- American Indian and Alaska Native alone
+    p0020008 integer,       -- Asian alone
+    p0020009 integer,       -- Native Hawaiian and Other Pacific Islander alone
+    p0020010 integer,       -- Some Other Race alone
+    p0020011 integer,   -- Two or More Races
+    p0020012 integer,   -- Population of two races
+    p0020028 integer,   -- Population of three races
+    p0020049 integer,   -- Population of four races
+    p0020065 integer,   -- Population of five races
+    p0020072 integer,   -- Population of six races
+
+    -- This section is referred to as P3. RACE FOR THE POPULATION 18 YEARS AND OVER
+    p0030001 integer,   -- Total
+    p0030002 integer,   -- Population of one race:
+    p0030003 integer,       -- White alone
+    p0030004 integer,       -- Black or African American alone
+    p0030005 integer,       -- American Indian and Alaska Native alone
+    p0030006 integer,       -- Asian alone
+    p0030007 integer,       -- Native Hawaiian and Other Pacific Islander alone
+    p0030008 integer,       -- Some Other Race alone
+    p0030009 integer,   -- Two or More Races
+    p0030010 integer,   -- Population of two races
+    p0030026 integer,   -- Population of three races
+    p0030047 integer,   -- Population of four races
+    p0030063 integer,   -- Population of five races
+    p0030070 integer,   -- Population of six races
+
+    -- This section is referred to as P4. HISPANIC OR LATINO, AND NOT HISPANIC OR LATINO BY RACE
+    -- FOR THE POPULATION 18 YEARS AND OVER
+    p0040001 integer,   -- Total
+    p0040002 integer,   -- Hispanic or Latino
+    p0040003 integer,   -- Not Hispanic or Latino:
+    p0040004 integer,   -- Population of one race:
+    p0040005 integer,   -- White alone
+    p0040006 integer,   -- Black or African American alone
+    p0040007 integer,   -- American Indian and Alaska Native alone
+    p0040008 integer,   -- Asian alone
+    p0040009 integer,   -- Native Hawaiian and Other Pacific Islander alone
+    p0040010 integer,   -- Some Other Race alone
+    p0040011 integer,   -- Two or More Races
+    p0040012 integer,   -- Population of two races
+    p0040028 integer,   -- Population of three races
+    p0040049 integer,   -- Population of four races
+    p0040065 integer,   -- Population of five races
+    p0040072 integer,   -- Population of six races
+
+    -- This section is referred to as H1. OCCUPANCY STATUS
+    h0010001 integer,   -- Total housing units
+    h0010002 integer,   -- Occupied
+    h0010003 integer    -- Vacant
+);
+```
+
+---
+
+### Import von Daten am Beispiel von Zensusdaten (USA 2010) 
+
+* Benötigte CSV: [us_counties_2010.csv](https://github.com/kirenz/datasets/blob/master/us_counties_2010.csv)
+
+```{sql connection=con}
+COPY us_counties_2010
+FROM '/tmp/us_counties_2010.csv'
+WITH (FORMAT CSV, HEADER);
+```
+
+--
+
+
+```{sql connection=con, output.var="us_all"}
+SELECT * 
+FROM us_counties_2010
+LIMIT 40;
+```
+
+---
+class: center, middle
+
+
+```{r, echo=FALSE}
+DT::datatable(
+  head(us_all, 40),
+  fillContainer = FALSE, options = list(pageLength = 6)
+)
+```
+
+---
+
+## Zensusdaten (USA 2010) 
+
+```{sql connection=con, output.var="us_limit"}
+SELECT geo_name, state_us_abbreviation, area_land
+FROM us_counties_2010
+ORDER BY area_land DESC
+LIMIT 3;
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(us_limit, format = 'html')
+```
+
+---
+
+## Zensusdaten (USA 2010) 
+
+```{sql connection=con, output.var="us_limit_2"}
+SELECT geo_name, state_us_abbreviation, internal_point_lon
+FROM us_counties_2010
+ORDER BY internal_point_lon DESC
+LIMIT 5;
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(us_limit_2, format = 'html')
+```
+
+---
+
+## Import einer Datenteilmenge (Supervisor salaries) 
+
+* CREATE TABLE:
+
+```{sql connection=con}
+CREATE TABLE supervisor_salaries (
+    town varchar(30),
+    county varchar(30),
+    supervisor varchar(30),
+    start_date date,
+    salary money,
+    benefits money
+);
+```
+
+???
+Creating a table to track supervisor salaries
+
+---
+### Import einer Datenteilmenge (Supervisor salaries) 
+
+* Daten sind hier verfügbar: [supervisor_salaries.csv](https://github.com/kirenz/datasets/blob/master/supervisor_salaries.csv) 
+
+```{sql connection=con}
+COPY supervisor_salaries (town, supervisor, salary)
+FROM '/tmp/supervisor_salaries.csv'
+WITH (FORMAT CSV, HEADER);
+```
+
+--
+
+```{sql connection=con, output.var="sup_ch"}
+-- Check the data
+SELECT * 
+FROM supervisor_salaries 
+LIMIT 2;
+```
+
+--
+
+```{r echo=FALSE}
+knitr::kable(sup_ch, format = 'html')
+```
+
+
+---
+## Datenexport
+
+### Export aller Daten
+
+* Export der Daten mit RPostgreSQL:
+
+ * Erzeugung eines R-Objekts
+
+```{r}
+data_postgres <- dbGetQuery(con, "SELECT * FROM us_counties_2010")
+```
+
+* Speicherung des R-Objekts
+
+```{r, eval=FALSE}
+write.table(
+  data_postgres, file='/tmp/us_counties_export.txt', 
+  col.names = TRUE, sep = "," , fileEncoding="UTF-8")
+```
+
+
+---
+
+
+```{r include = FALSE}
+dbDisconnect(con)
+
+```
+
+
+```{sql connection=con, include=FALSE, eval=FALSE}
+DROP TABLE supervisor_salaries;
+
+```
+
+```{sql connection=con, include=FALSE, eval=FALSE}
+DROP TABLE eagle_watch;
+```
+
+```{sql connection=con, include=FALSE, eval=FALSE}
+DROP TABLE char_data_types;
+```
+
+```{sql connection=con, include=FALSE, eval=FALSE}
+DROP TABLE date_time_types;
+```
+
+```{sql connection=con, include=FALSE, eval=FALSE}
+DROP TABLE number_data_types;
+```
+
+```{sql connection=con, include=FALSE, eval=FALSE}
+DROP TABLE people;
+```
+
+```{sql connection=con, include=FALSE, eval=FALSE}
+DROP TABLE us_counties_2010;
+```
+
+
+class: center, middle
+
+## Vielen Dank!
+
+[Prof. Dr. Jan Kirenz](https://www.kirenz.com)  
+
+HdM Stuttgart  
+Nobelstraße 10  
+70569 Stuttgart
+
+![](https://upload.wikimedia.org/wikipedia/commons/5/5e/HdM_Logo.svg)
+
