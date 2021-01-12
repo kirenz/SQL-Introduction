@@ -20,12 +20,14 @@ pw = "Platzhalter"
 
 ```{r}
 library(DBI)
-library(RPostgreSQL)
+library(RPostgres)
 
-drv <- dbDriver("PostgreSQL")
-con <- dbConnect(drv, dbname = "postgres",
-                 host = "localhost", port = 5433,
-                 user = "postgres", password = pw)
+con <- dbConnect(RPostgres::Postgres(),
+                 dbname = "postgres",
+                  host = "localhost", 
+                  port = 5432, # hier den eigenen Port angeben
+                  user = "postgres", 
+                  password = pw)
 ```
 
 
