@@ -1,0 +1,655 @@
+---
+title: "Gapminder Problem Set"
+subtitle: "Data Exploration with SQL"
+author: "YOUR NAME HERE"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+# Data preparation
+
+## Create table in RSQLite
+
+You first create a table called `gapminder` in your database. 
+
+```{r}
+
+# install.packages("RSQLite")
+# install.packages("gapminder")
+
+library(DBI)
+library(gapminder)
+
+# Connection to database SQlite
+con <- dbConnect(RSQLite::SQLite(), ":memory:")
+
+# Write data "gapminder" into database
+dbWriteTable(con, "gapminder", gapminder)
+
+# List tables
+dbListTables(con)
+
+```
+
+
+# Data exploration 
+
+
+## Selecting single columns
+
+* Select the column `country`.
+
+```{sql connection=con}
+
+
+```
+
+
+--- 
+ 
+## Selecting multiple columns
+
+* Select the columns `country`and population (`pop`).
+
+```{sql connection=con}
+
+```
+
+
+---
+
+
+## Select all columns
+
+* Select all columns.
+
+```{sql connection=con}
+
+```
+
+
+---
+
+## Select all columns but not all observations
+
+* Select all columns but only 5 observations.
+
+```{sql connection=con}
+
+```
+
+
+---
+
+
+## Select unique values
+
+* a) Select all the unique values from the column `continent`. 
+
+```{sql connection=con}
+
+```
+
+
+* b) Select all the unique values from the column `country`. 
+
+```{sql connection=con}
+
+```
+
+
+---
+
+## Count rows
+
+* a) Count the number of rows in the dataset. 
+
+```{sql connection=con}
+
+```
+
+
+* b) Count the number of distinct values in the column country.
+
+```{sql connection=con}
+
+```
+
+---
+
+## Filtering 
+
+### Filtering of numeric values
+
+* a) Obtain all countries with a population less than 1.000.000. 
+
+```{sql connection=con}
+
+```
+
+* b) Obtain all distinct countries with a population less than 1.000.000. 
+
+```{sql connection=con}
+
+```
+
+* c) Obtain all observations with a population less than 1.000.000. 
+
+```{sql connection=con}
+
+```
+
+* d) Obtain all distinct observations with a population less than 1.000.000. 
+
+```{sql connection=con}
+
+```
+
+* e) Count all observations with a population less than 1.000.000. 
+
+```{sql connection=con}
+
+```
+
+* f) Obtain the columns `countries` and `continent`  with a population less than 1.000.000. 
+
+```{sql connection=con}
+
+```
+
+* g) Obtain the distinct columns `countries` and `continent` with a population less than 1.000.000. 
+
+```{sql connection=con}
+
+```
+
+
+---
+
+### Filtering of text values
+
+* a) Obtain all observations from Germany.
+
+```{sql connection=con}
+
+```
+
+
+* b) Obtain distinct countries from Europe.
+
+```{sql connection=con}
+
+```
+
+
+---
+
+## WHERE: AND, OR, NOT
+
+### AND 
+
+* a) Obtain countries from continent Asia where population is less than 1.000.000
+
+```{sql connection=con}
+
+```
+
+
+* b) Obtain distinct countries from continent Asia where population is less than 1.000.000
+
+```{sql connection=con}
+
+```
+
+
+* c) Obtain distinct countries from continent Europe where the life expectancy is greater than 70 in the years before 1950.
+
+```{sql connection=con}
+
+```
+
+
+* d) Obtain distinct countries from continent Europe where the life expectancy is greater than 70 in the years before 1960.
+
+```{sql connection=con}
+
+```
+
+* e) Obtain distinct countries from continent Europe where the life expectancy is greater than 70 in the years before 1970.
+
+```{sql connection=con}
+
+```
+
+---
+
+
+### OR
+
+* a) Obtain distinct countries and life expectancies where the life expectancy is less than 40 or greater than 75.
+
+```{sql connection=con}
+
+```
+
+
+* b) Obtain distinct countries where the life expectancy in the year 1951 or 1952 is greater than 70. 
+
+```{sql connection=con}
+
+```
+
+
+* c) Obtain distinct countries where the life expectancy is greater than 70 and the country is located in the continent Europe of Asia.
+
+```{sql connection=con}
+
+```
+
+---
+
+
+
+### BETWEEN
+
+* a) Obtain distinct countries where life expectancy is greater or equal to 60 and less or equal to 70 (use operator `AND`).
+
+```{sql connection=con}
+
+```
+
+
+* b) Obtain distinct countries where life expectancy is between 60 and 70 (use operator `BETWEEN`).
+
+```{sql connection=con}
+
+```
+
+
+
+* c) Obtain distinct countries where life expectancy is between 60 and 70 and continent equals Africs. (use operator `BETWEEN`).
+
+```{sql connection=con}
+
+```
+
+
+---
+
+### WHERE IN
+
+* a) Obtain distinct countries and years where year equals 1952, 1962, 1972, 1982 or 1992 (use operator `OR`).  
+
+```{sql connection=con}
+
+```
+
+* b) Obtain distinct countries and years where year is in 1952, 1962, 1972, 1982 or 1992 (use operator `IN`).  
+
+```{sql connection=con}
+
+```
+
+---
+
+
+### NULL 
+
+* a) Obtain the names of distinct countries which values are not missing in the gapminder table.
+
+```{sql connection=con}
+
+```
+
+* b) Obtain the names of distinct countries which values of life expectancy are not missing in the gapminder table.
+
+```{sql connection=con}
+
+```
+
+---
+
+
+### LIKE and NOT LIKE
+
+* a) Obtain the names of distinct countries where the continent starts with the uppercase letter "E" (use operator `%`). 
+
+```{sql connection=con}
+
+```
+
+
+* b) Obtain the names of distinct countries where the continent starts the word "Europ" (use operator `LIKE` and `_`).
+
+```{sql connection=con}
+
+```
+
+
+* c) Obtain the names of distinct countries where the continent does not start the letter "E" (use operator `NOT LIKE` and `%`).
+
+```{sql connection=con}
+
+```
+
+
+---
+
+# Aggregate Functions
+
+## SUM, AVG, MAX, MIN
+
+* a) Add up the values of the column GDP per capita (`gdppercap`) where continent is Asia. 
+
+```{sql connection=con}
+
+```
+
+* b) Calculate the average of the variable life expectancy.
+
+```{sql connection=con}
+
+```
+
+* c) Obtain the highest value of the column life expectancy.  
+
+```{sql connection=con}
+
+```
+
+* d) Obtain the lowest value of the column life expectancy.  
+
+```{sql connection=con}
+
+```
+
+* e) Obtain the average value of the column life expectancy for continent Asia.
+
+```{sql connection=con}
+
+```
+
+* f) Obtain the average value of the column life expectancy where country begins with the uppercase letter "G".
+
+```{sql connection=con}
+
+```
+
+* g) Obtain the highest value of the column life expectancy where country contains the word "Germa" (use the operator _)
+
+```{sql connection=con}
+
+```
+
+* h) Obtain the average value of the column life expectancy between the years 1952 and 1962.
+
+```{sql connection=con}
+
+```
+
+---
+
+
+## Aliasing 
+
+* a) Obtain the average value of the column life expectancy (call the resulting column "average_lifeexp") as well as the highest value of life expectancy (call the resulting column "maximum_lifeexp"). Use the operator `AS` to obtain the desired results.
+
+```{sql connection=con}
+
+```
+
+* b) Obtain the sum of the column GDP per capita (call the resulting column "gdppercap_1952") for the year 1952. 
+
+```{sql connection=con}
+
+```
+
+* c) Obtain the sum of the column GDP per capita (call the resulting column "gdppercap_1992") for the year 1992.
+
+```{sql connection=con}
+
+```
+
+* d) Obtain the highest value for the colum year.  
+
+```{sql connection=con}
+
+```
+
+
+* e) Obtain the lowest value for the colum year.
+
+```{sql connection=}
+
+```
+
+
+
+# Sorting and grouping
+
+## ORDER BY
+
+* a) Obtain the data for the columns `country` and population (`pop`) in the year 2007 and order by population (ascending). 
+
+```{sql connection=con}
+
+```
+
+* b) Obtain the data for the columns `country` and population (`pop`) in the year 2007 and order by population (descending). 
+
+```{sql connection=con}
+
+```
+
+* c) Obtain the data for the columns `country` and `continent` and order by continent (ascending). 
+
+```{sql connection=con}
+
+```
+
+* d) Obtain the data for the columns `country` and `continent` and order by continent (descending). 
+
+```{sql connection=con}
+
+```
+
+* e) Obtain the data for the columns `country`,  `continent` and `pop` where continent is not starting with a capital "A" and order the result by population  (ascending). 
+
+```{sql connection=con}
+
+```
+
+* f) Obtain the data for the columns `country`,  `continent` and `pop` where continent is not starting with a capital "A" and order the result by population  (descending). 
+
+```{sql connection=con}
+
+```
+
+* g) Obtain the data for the columns `country`,  `continent` and `pop` where the year is in 2002 or 2007 (use the operator `IN`) and order the result by population (ascending). 
+
+```{sql connection=con}
+
+```
+
+
+
+## Sorting multiple columns
+
+* Obtain the data for the columns `country`,  `continent` where the year is 2007 and order the result by continent and country (ascending). 
+
+
+```{sql connection=con}
+
+```
+
+
+
+## GROUP BY
+
+* a) Obtain the data for the column `continent` where the year is 2007 and order the result by continent and country (ascending). 
+
+```{sql connection=con}
+
+```
+
+* b) Obtain the data for the column `continent`, count all cases by continent and order the result (ascending). 
+```{sql connection=con}
+
+```
+
+* c) Obtain the average life expectancy for the column `continent`. Group the results by `continent`.  
+
+```{sql connection=con}
+
+```
+
+* d) Obtain the average life expectancy for the column `continent`. Group by continent and order the results by average life expectancy (ascending).  
+
+```{sql connection=con}
+
+```
+
+* e) Obtain the average life expectancy for the column `continent` for the year 2007. Group by continent and order the results by average life expectancy (ascending).  
+
+```{sql connection=con}
+
+```
+
+
+---
+
+## Having
+
+* a) Obtain the average life expectancy (AS avg_lifeexp) and average GDP per capita (AS avg_gdppercap) by continent  for the year 2007 where the total population is greater than 900000000 and order by continent.
+
+
+```{sql connection=con}
+
+```
+
+* b) Obtain the average life expectancy (AS avg_lifeexp) and average GDP per capita (AS avg_gdppercap) by continent  for the year 2007 where the number of countries is greater than 50.
+
+
+```{sql connection=con}
+
+```
+
+
+
+---
+
+# Joins
+
+- Import data from the world happiness report 2020 (csv "whr_20.csv") and call the table "happy":
+
+```{r connection=con}
+
+library(tidyverse)
+
+happy_df <- read_csv("https://raw.githubusercontent.com/kirenz/datasets/master/whr_20.csv") 
+
+happy <- 
+  happy_df %>% 
+  rename(
+        country = country_name, 
+        happiness = ladder_score,
+        gdp = logged_gdp_per_capita,
+        family = explained_by_social_support,
+        liefeexpectancy = explained_by_healthy_life_expectancy,
+        trust = explained_by_perceptions_of_corruption
+  ) %>% 
+  select(country, happiness, gdp, family, liefeexpectancy, trust)
+    
+dbWriteTable(con, "happy", happy)
+
+dbListTables(con)
+
+```
+
+
+- Let's have a look at the data:
+
+```{sql connection=con}
+SELECT *
+FROM HAPPY;
+```
+
+
+## Inner Join
+
+* a) Inner join the `gapminder` table on the left to the `happy` table on the right, aliasing gapminder as "g" and happy as "h", select `country` and `gdppercap` from the gapminder table and `happiness` from the happy table for the year 2007:
+
+```{sql connection=con}
+
+```
+
+* b) Repeat the query from a) with `USING()` instead of `ON`: 
+
+```{sql connection=con}
+
+```
+
+* c) Now we would like to obtain a table with three columns: country, the population in 2002 and the population in 2007. 
+
+Therefore, join (`SELF JOIN`) the table gapminder with itself on `country`. SQL does not allow same-named fields, so alias gapminder as g1 and g2. Select g1.pop as pop2002 and g2.pop as pop2007.
+
+```{sql connection=con}
+
+```
+
+* d) Add a new column to our table in c): `growth` (difference between population in 2002 and 2007).
+
+Use a SELECT statement to calculate a new column, aliased as growth, that calculates the population growth from 2002 to 2007 for each country, using g2.pop and g1.pop.
+
+```{sql connection=con}
+
+```
+
+* e) Now calculate the percentage population growth from 2002 to 2007 for each country, and alias it as `growth_perc`. You might want to use the `CAST` function to convert data from integer to a numeric type. Use the `ROUND` function to round growth_perc to two decimal places. 
+
+```{sql connection=con}
+
+```
+
+
+---
+
+## Left Join
+
+* a) Perform an `INNER JOIN` with the gapminder table on the left and the happy table on the right. Alias the gapminder table as "g" and the happy table as "h". Select `country`, `continent` and `lifeexp` from gapminder and `happiness` from happy. Join on country and filter for the year 2007 in the gapminder table. Order by `lifeexp` ascending. Note how many records are in the result of the join in the query result tab.
+
+```{sql connection=con}
+
+```
+
+* b) Change the code of a) to perform a `LEFT JOIN` instead of an `INNER JOIN`. After executing this query, note how many records the query result contains. 
+
+```{sql connection=con}
+
+```
+
+---
+
+
+## Subqueries
+
+* a) Use the happy table to discover which countries have higher than overall average happiness (use a subquery)? 
+
+```{sql connection=con}
+
+```
+
+* b) Obtain the overall average happiness: 
+
+```{sql connection=con}
+
+```
