@@ -249,7 +249,7 @@ dbListTables(con)
 ```
 
 
-* c) Obtain distinct countries where the life expectancy is greater than 70 and the country is located in the continent Europe of Asia.
+* c) Obtain distinct countries where the life expectancy is greater than 70 and the country is located in the continent Europe or Asia.
 
 ```{sql connection=con}
 
