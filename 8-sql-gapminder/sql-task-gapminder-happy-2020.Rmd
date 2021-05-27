@@ -495,30 +495,24 @@ dbListTables(con)
 
 ## GROUP BY
 
-* a) Obtain the data for the column `continent` where the year is 2007 and order the result by continent and country (ascending). 
+* a) Obtain the data for the column `continent`, count all cases by continent and order the result (ascending). 
+```{sql connection=con}
+
+```
+
+* b) Obtain the average life expectancy for the column `continent`. Group the results by `continent`.  
 
 ```{sql connection=con}
 
 ```
 
-* b) Obtain the data for the column `continent`, count all cases by continent and order the result (ascending). 
-```{sql connection=con}
-
-```
-
-* c) Obtain the average life expectancy for the column `continent`. Group the results by `continent`.  
+* c) Obtain the average life expectancy for the column `continent`. Group by continent and order the results by average life expectancy (ascending).  
 
 ```{sql connection=con}
 
 ```
 
-* d) Obtain the average life expectancy for the column `continent`. Group by continent and order the results by average life expectancy (ascending).  
-
-```{sql connection=con}
-
-```
-
-* e) Obtain the average life expectancy for the column `continent` for the year 2007. Group by continent and order the results by average life expectancy (ascending).  
+* d) Obtain the average life expectancy for the column `continent` for the year 2007. Group by continent and order the results by average life expectancy (ascending).  
 
 ```{sql connection=con}
 
