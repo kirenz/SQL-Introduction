@@ -2,7 +2,7 @@
 
 Einführung in Structured Query Language (SQL)
 
-- Datenexploration (Selektieren, Ordnen und Filtern)
+- [Datenexploration (Selektieren, Ordnen und Filtern)](https://kirenz.github.io/SQL-Introduction/1-sql-intro/sql-intro-select.html#1)
 
 - Datentypen und Datentransformationen
 
