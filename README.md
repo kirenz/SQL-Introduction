@@ -2,6 +2,8 @@
 
 Einführung in Structured Query Language (SQL)
 
+## Slides
+
 1. [Datenexploration (Selektieren, Ordnen und Filtern)](https://kirenz.github.io/SQL-Introduction/1-sql-intro/sql-intro-select.html#1)
 
 2. [Datentypen und Datentransformationen](https://kirenz.github.io/SQL-Introduction/2-sql-datatypes/sql-datatypes.html)
